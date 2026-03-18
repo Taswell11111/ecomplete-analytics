@@ -1,0 +1,929 @@
+import React, { useState, useMemo } from 'react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
+  LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, ComposedChart 
+} from 'recharts';
+import { 
+  ArrowDownRight, ArrowUpRight, Package, RotateCcw, DollarSign, Clock, 
+  AlertCircle, Filter, Download, TrendingUp, TrendingDown, CheckCircle,
+  XCircle, AlertTriangle, RefreshCw, ShoppingBag, Truck, Users, Eye
+} from 'lucide-react';
+
+const App = () => {
+  const [selectedBrand, setSelectedBrand] = useState('all');
+  const [dateRange, setDateRange] = useState('30d');
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const brands = ["Diesel", "Hurley", "Jeep Apparel", "Reebok", "Superdry"];
+
+  // Realistic RMA data based on ReturnGO API structure
+  const rmaData = useMemo(() => {
+    const baseData = {
+      all: {
+        totalReturns: 1847,
+        totalRefundAmount: 287450,
+        avgProcessingDays: 2.3,
+        statusBreakdown: {
+          Pending: 247,
+          Approved: 189,
+          Received: 156,
+          Validated: 98,
+          Done: 1024,
+          Rejected: 89,
+          Canceled: 44
+        },
+        resolutionTypes: {
+          'Refund to Payment': 1142,
+          'Store Credit': 389,
+          'Exchange': 227,
+          'Rejected': 89
+        },
+        returnReasons: {
+          'Size/Fit Issue': 672,
+          'Quality/Defect': 389,
+          'Changed Mind': 298,
+          'Not as Described': 267,
+          'Wrong Item': 142,
+          'Damaged in Transit': 79
+        },
+        restockability: {
+          restockable: 1289,
+          nonRestockable: 469,
+          pending: 89
+        },
+        financialMetrics: {
+          totalRevenueLost: 287450,
+          restockingFeesCollected: 18920,
+          shippingFeesCollected: 12340,
+          netRevenueLost: 256190,
+          avgReturnValue: 155.67
+        }
+      },
+      Diesel: {
+        totalReturns: 428,
+        totalRefundAmount: 89200,
+        avgProcessingDays: 2.8,
+        statusBreakdown: { Pending: 67, Approved: 45, Received: 38, Validated: 23, Done: 215, Rejected: 28, Canceled: 12 },
+        resolutionTypes: { 'Refund to Payment': 298, 'Store Credit': 67, 'Exchange': 35, 'Rejected': 28 },
+        returnReasons: { 'Size/Fit Issue': 189, 'Quality/Defect': 98, 'Changed Mind': 67, 'Not as Described': 45, 'Wrong Item': 23, 'Damaged in Transit': 6 },
+        restockability: { restockable: 267, nonRestockable: 134, pending: 27 },
+        financialMetrics: { totalRevenueLost: 89200, restockingFeesCollected: 5680, shippingFeesCollected: 3420, netRevenueLost: 80100, avgReturnValue: 208.41 }
+      },
+      Hurley: {
+        totalReturns: 298,
+        totalRefundAmount: 42300,
+        avgProcessingDays: 1.9,
+        statusBreakdown: { Pending: 34, Approved: 28, Received: 23, Validated: 15, Done: 178, Rejected: 12, Canceled: 8 },
+        resolutionTypes: { 'Refund to Payment': 189, 'Store Credit': 67, 'Exchange': 30, 'Rejected': 12 },
+        returnReasons: { 'Size/Fit Issue': 98, 'Quality/Defect': 56, 'Changed Mind': 67, 'Not as Described': 45, 'Wrong Item': 23, 'Damaged in Transit': 9 },
+        restockability: { restockable: 223, nonRestockable: 64, pending: 11 },
+        financialMetrics: { totalRevenueLost: 42300, restockingFeesCollected: 2340, shippingFeesCollected: 1890, netRevenueLost: 38070, avgReturnValue: 141.95 }
+      },
+      'Jeep Apparel': {
+        totalReturns: 267,
+        totalRefundAmount: 38900,
+        avgProcessingDays: 2.1,
+        statusBreakdown: { Pending: 29, Approved: 24, Received: 19, Validated: 12, Done: 162, Rejected: 15, Canceled: 6 },
+        resolutionTypes: { 'Refund to Payment': 167, 'Store Credit': 56, 'Exchange': 29, 'Rejected': 15 },
+        returnReasons: { 'Size/Fit Issue': 89, 'Quality/Defect': 67, 'Changed Mind': 45, 'Not as Described': 34, 'Wrong Item': 23, 'Damaged in Transit': 9 },
+        restockability: { restockable: 201, nonRestockable: 54, pending: 12 },
+        financialMetrics: { totalRevenueLost: 38900, restockingFeesCollected: 2120, shippingFeesCollected: 1670, netRevenueLost: 35110, avgReturnValue: 145.69 }
+      },
+      Reebok: {
+        totalReturns: 512,
+        totalRefundAmount: 78900,
+        avgProcessingDays: 2.0,
+        statusBreakdown: { Pending: 67, Approved: 56, Received: 45, Validated: 28, Done: 278, Rejected: 24, Canceled: 14 },
+        resolutionTypes: { 'Refund to Payment': 334, 'Store Credit': 112, 'Exchange': 42, 'Rejected': 24 },
+        returnReasons: { 'Size/Fit Issue': 198, 'Quality/Defect': 89, 'Changed Mind': 78, 'Not as Described': 89, 'Wrong Item': 45, 'Damaged in Transit': 13 },
+        restockability: { restockable: 389, nonRestockable: 101, pending: 22 },
+        financialMetrics: { totalRevenueLost: 78900, restockingFeesCollected: 4890, shippingFeesCollected: 3240, netRevenueLost: 70770, avgReturnValue: 154.10 }
+      },
+      Superdry: {
+        totalReturns: 342,
+        totalRefundAmount: 38150,
+        avgProcessingDays: 2.4,
+        statusBreakdown: { Pending: 50, Approved: 36, Received: 31, Validated: 20, Done: 191, Rejected: 10, Canceled: 4 },
+        resolutionTypes: { 'Refund to Payment': 154, 'Store Credit': 87, 'Exchange': 91, 'Rejected': 10 },
+        returnReasons: { 'Size/Fit Issue': 98, 'Quality/Defect': 79, 'Changed Mind': 41, 'Not as Described': 54, 'Wrong Item': 28, 'Damaged in Transit': 42 },
+        restockability: { restockable: 209, nonRestockable: 116, pending: 17 },
+        financialMetrics: { totalRevenueLost: 38150, restockingFeesCollected: 1890, shippingFeesCollected: 2120, netRevenueLost: 34140, avgReturnValue: 111.55 }
+      }
+    };
+    return baseData;
+  }, []);
+
+  const currentData = selectedBrand === 'all' ? rmaData.all : rmaData[selectedBrand];
+
+  // Daily trend data
+  const dailyTrendData = useMemo(() => {
+    const last30Days = Array.from({ length: 30 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (29 - i));
+      return {
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        created: Math.floor(Math.random() * 40) + 30,
+        approved: Math.floor(Math.random() * 35) + 25,
+        done: Math.floor(Math.random() * 50) + 40,
+        rejected: Math.floor(Math.random() * 8) + 2
+      };
+    });
+    return last30Days;
+  }, []);
+
+  // Status funnel data for visualization
+  const statusFunnelData = useMemo(() => {
+    const total = currentData.totalReturns;
+    return [
+      { status: 'Submitted', count: total, percentage: 100, color: '#3b82f6' },
+      { status: 'Approved', count: total - currentData.statusBreakdown.Rejected - currentData.statusBreakdown.Canceled, percentage: 95.2, color: '#10b981' },
+      { status: 'Received', count: currentData.statusBreakdown.Received + currentData.statusBreakdown.Validated + currentData.statusBreakdown.Done, percentage: 69.3, color: '#f59e0b' },
+      { status: 'Completed', count: currentData.statusBreakdown.Done, percentage: 55.4, color: '#8b5cf6' }
+    ];
+  }, [currentData]);
+
+  // Brand comparison data
+  const brandComparisonData = useMemo(() => {
+    return brands.map(brand => {
+      const data = rmaData[brand];
+      return {
+        brand,
+        returnRate: ((data.totalReturns / 5000) * 100).toFixed(1),
+        avgValue: data.financialMetrics.avgReturnValue,
+        processingTime: data.avgProcessingDays,
+        approvalRate: (((data.totalReturns - data.statusBreakdown.Rejected - data.statusBreakdown.Canceled) / data.totalReturns) * 100).toFixed(1),
+        restockRate: ((data.restockability.restockable / data.totalReturns) * 100).toFixed(1)
+      };
+    });
+  }, [rmaData, brands]);
+
+  // Top returned products
+  const topReturnedProducts = useMemo(() => {
+    const products = [
+      { sku: 'DX-202-32-BLK', name: 'Slim Fit Jeans - Distressed Black', brand: 'Diesel', qty: 87, revenue: 18096, reason: 'Size/Fit', restockable: 34 },
+      { sku: 'RB-CL85-10-WHT', name: 'Club C 85 Vintage - White', brand: 'Reebok', qty: 72, revenue: 8640, reason: 'Quality/Defect', restockable: 68 },
+      { sku: 'SD-HD3-L-NVY', name: 'Orange Label Hoodie - Navy', brand: 'Superdry', qty: 64, revenue: 7680, reason: 'Size/Fit', restockable: 51 },
+      { sku: 'HR-BS12-M-BLU', name: 'Boardshort Phantom - Blue', brand: 'Hurley', qty: 58, revenue: 4060, reason: 'Changed Mind', restockable: 58 },
+      { sku: 'JP-TRK-34-KHK', name: 'Adventure Cargo Shorts - Khaki', brand: 'Jeep Apparel', qty: 52, revenue: 4420, reason: 'Size/Fit', restockable: 45 },
+      { sku: 'DX-JK89-L-DNM', name: 'Denim Trucker Jacket', brand: 'Diesel', qty: 48, revenue: 14400, reason: 'Not as Described', restockable: 29 }
+    ];
+
+    if (selectedBrand === 'all') return products;
+    return products.filter(p => p.brand === selectedBrand);
+  }, [selectedBrand]);
+
+  // Processing time breakdown
+  const processingTimeData = useMemo(() => {
+    return [
+      { stage: 'Approval', avgHours: 4.2, target: 6, status: 'good' },
+      { stage: 'Receiving', avgHours: 38.4, target: 48, status: 'good' },
+      { stage: 'Validation', avgHours: 12.8, target: 12, status: 'warning' },
+      { stage: 'Refund Processing', avgHours: 18.2, target: 24, status: 'good' }
+    ];
+  }, []);
+
+  const metrics = useMemo(() => [
+    { 
+      title: "Active Returns", 
+      value: currentData.statusBreakdown.Pending + currentData.statusBreakdown.Approved + currentData.statusBreakdown.Received + currentData.statusBreakdown.Validated,
+      subtitle: `${currentData.totalReturns} total`,
+      change: "+12.3%", 
+      trend: "up", 
+      icon: Package, 
+      color: "text-blue-600",
+      bgColor: "bg-blue-50" 
+    },
+    { 
+      title: "Net Revenue Impact", 
+      value: `$${(currentData.financialMetrics.netRevenueLost / 1000).toFixed(1)}k`,
+      subtitle: `$${(currentData.financialMetrics.totalRevenueLost / 1000).toFixed(1)}k gross`,
+      change: "-3.2%", 
+      trend: "down", 
+      icon: DollarSign, 
+      color: "text-red-600",
+      bgColor: "bg-red-50" 
+    },
+    { 
+      title: "Avg Processing Time", 
+      value: `${currentData.avgProcessingDays}d`,
+      subtitle: "Target: 3.0d",
+      change: currentData.avgProcessingDays <= 3 ? "-8%" : "+15%", 
+      trend: currentData.avgProcessingDays <= 3 ? "down" : "up",
+      icon: Clock, 
+      color: currentData.avgProcessingDays <= 3 ? "text-green-600" : "text-amber-600",
+      bgColor: currentData.avgProcessingDays <= 3 ? "bg-green-50" : "bg-amber-50" 
+    },
+    { 
+      title: "Restockability Rate", 
+      value: `${((currentData.restockability.restockable / currentData.totalReturns) * 100).toFixed(1)}%`,
+      subtitle: `${currentData.restockability.nonRestockable} write-offs`,
+      change: "+2.1%", 
+      trend: "up", 
+      icon: RefreshCw, 
+      color: "text-purple-600",
+      bgColor: "bg-purple-50" 
+    },
+  ], [currentData]);
+
+  const renderOverviewTab = () => (
+    <div className="space-y-6">
+      {/* Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {metrics.map((m, i) => (
+          <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start mb-4">
+              <div className={`p-3 rounded-lg ${m.bgColor}`}>
+                <m.icon size={24} className={m.color} />
+              </div>
+              <div className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
+                m.trend === 'down' && m.title.includes('Revenue') || m.trend === 'down' && m.title.includes('Processing') ? 'bg-green-50 text-green-700' :
+                m.trend === 'up' && m.title.includes('Revenue') || m.trend === 'up' && m.title.includes('Processing') ? 'bg-red-50 text-red-700' :
+                m.trend === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+              }`}>
+                {m.trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                {m.change}
+              </div>
+            </div>
+            <p className="text-sm text-slate-500 font-medium mb-1">{m.title}</p>
+            <h3 className="text-2xl font-bold text-slate-900 mb-1">{m.value}</h3>
+            <p className="text-xs text-slate-400">{m.subtitle}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Status Pipeline & Resolution Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="font-bold text-lg mb-6 text-slate-800">Return Status Pipeline</h3>
+          <div className="space-y-4">
+            {Object.entries(currentData.statusBreakdown).map(([status, count]) => {
+              const percentage = (count / currentData.totalReturns) * 100;
+              const getStatusColor = () => {
+                if (status === 'Done') return 'bg-green-500';
+                if (status === 'Rejected' || status === 'Canceled') return 'bg-red-500';
+                if (status === 'Pending') return 'bg-amber-500';
+                return 'bg-blue-500';
+              };
+              const getStatusIcon = () => {
+                if (status === 'Done') return CheckCircle;
+                if (status === 'Rejected' || status === 'Canceled') return XCircle;
+                if (status === 'Pending') return Clock;
+                return Package;
+              };
+              const Icon = getStatusIcon();
+
+              return (
+                <div key={status}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <Icon size={16} className="text-slate-400" />
+                      <span className="text-sm font-semibold text-slate-700">{status}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-500">{percentage.toFixed(1)}%</span>
+                      <span className="text-sm font-bold text-slate-900 min-w-[60px] text-right">{count} RMAs</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2.5">
+                    <div 
+                      className={`h-2.5 rounded-full ${getStatusColor()} transition-all duration-500`}
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex gap-3">
+              <AlertCircle className="text-blue-600 shrink-0 mt-0.5" size={18} />
+              <div>
+                <p className="text-sm font-semibold text-blue-900 mb-1">Pipeline Health Check</p>
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  {currentData.statusBreakdown.Pending} returns awaiting approval (goal: &lt;200). 
+                  Approval rate: {(((currentData.totalReturns - currentData.statusBreakdown.Rejected - currentData.statusBreakdown.Canceled) / currentData.totalReturns) * 100).toFixed(1)}%.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="font-bold text-lg mb-6 text-slate-800">Resolution Type Split</h3>
+          <div className="h-64 mb-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={Object.entries(currentData.resolutionTypes).map(([name, value]) => ({ name, value }))}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {Object.entries(currentData.resolutionTypes).map(([name], index) => {
+                    const colors = { 'Refund to Payment': '#ef4444', 'Store Credit': '#f59e0b', 'Exchange': '#10b981', 'Rejected': '#64748b' };
+                    return <Cell key={name} fill={colors[name] || '#94a3b8'} />;
+                  })}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="space-y-3">
+            {Object.entries(currentData.resolutionTypes).map(([name, value]) => {
+              const colors = { 
+                'Refund to Payment': { bg: 'bg-red-500', text: 'text-red-700' },
+                'Store Credit': { bg: 'bg-amber-500', text: 'text-amber-700' },
+                'Exchange': { bg: 'bg-green-500', text: 'text-green-700' },
+                'Rejected': { bg: 'bg-slate-500', text: 'text-slate-700' }
+              };
+              const color = colors[name] || { bg: 'bg-slate-400', text: 'text-slate-600' };
+              const percentage = (value / currentData.totalReturns * 100).toFixed(1);
+
+              return (
+                <div key={name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${color.bg}`}></div>
+                    <span className="text-xs font-medium text-slate-600">{name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">{percentage}%</span>
+                    <span className={`text-xs font-bold ${color.text}`}>{value}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-slate-600">Exchange Rate</span>
+              <span className="text-sm font-bold text-green-600">
+                {((currentData.resolutionTypes.Exchange / currentData.totalReturns) * 100).toFixed(1)}%
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Customer retention opportunity</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Daily Trend */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-bold text-lg text-slate-800">30-Day Return Trend by Status</h3>
+          <div className="flex gap-2">
+            <button className="text-xs px-3 py-1.5 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">7D</button>
+            <button className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">30D</button>
+            <button className="text-xs px-3 py-1.5 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">90D</button>
+          </div>
+        </div>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={dailyTrendData}>
+              <defs>
+                <linearGradient id="colorCreated" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorDone" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+              <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+              <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
+              <Legend />
+              <Area type="monotone" dataKey="created" stroke="#3b82f6" fill="url(#colorCreated)" strokeWidth={2} name="Created" />
+              <Area type="monotone" dataKey="approved" stroke="#f59e0b" fill="transparent" strokeWidth={2} strokeDasharray="5 5" name="Approved" />
+              <Area type="monotone" dataKey="done" stroke="#10b981" fill="url(#colorDone)" strokeWidth={2} name="Completed" />
+              <Area type="monotone" dataKey="rejected" stroke="#ef4444" fill="transparent" strokeWidth={2} strokeDasharray="3 3" name="Rejected" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Return Reasons & Top Products */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="font-bold text-lg mb-6 text-slate-800">Return Reason Distribution</h3>
+          <div className="space-y-4">
+            {Object.entries(currentData.returnReasons)
+              .sort(([,a], [,b]) => b - a)
+              .map(([reason, count], index) => {
+                const percentage = (count / currentData.totalReturns) * 100;
+                const colors = ['bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500', 'bg-blue-500', 'bg-slate-500'];
+                
+                return (
+                  <div key={reason}>
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${colors[index]}`}></div>
+                        <span className="text-sm font-medium text-slate-700">{reason}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500">{percentage.toFixed(1)}%</span>
+                        <span className="text-sm font-bold text-slate-900 min-w-[50px] text-right">{count}</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full ${colors[index]} transition-all duration-500`}
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          {selectedBrand === 'all' && (
+            <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-100">
+              <div className="flex gap-3">
+                <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                <div>
+                  <p className="text-sm font-semibold text-amber-900 mb-1">Size/Fit Concerns</p>
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    36.4% of returns cite sizing issues. Consider size guide improvements for Diesel and Reebok.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-bold text-lg text-slate-800">Top Returned Products</h3>
+            <button className="text-indigo-600 text-xs font-semibold hover:underline">View All</button>
+          </div>
+          <div className="space-y-4">
+            {topReturnedProducts.slice(0, 5).map((product, i) => (
+              <div key={product.sku} className="flex items-start gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                <div className="flex-shrink-0 w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center">
+                  <Package size={20} className="text-slate-500" />
+                </div>
+                <div className="flex-grow min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{product.name}</p>
+                  <p className="text-xs text-slate-500 mb-1">SKU: {product.sku} • {product.brand}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded-md bg-red-50 text-red-700 font-medium">{product.qty} returns</span>
+                    <span className="text-xs text-slate-400">{product.reason}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-900">${product.revenue.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">{((product.restockable / product.qty) * 100).toFixed(0)}% restock</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderFinancialTab = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-red-50">
+              <DollarSign size={20} className="text-red-600" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Gross Revenue Lost</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">${(currentData.financialMetrics.totalRevenueLost / 1000).toFixed(1)}k</p>
+          <p className="text-xs text-slate-400 mt-1">Total refunded to customers</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-green-50">
+              <TrendingUp size={20} className="text-green-600" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Fees Collected</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">
+            ${((currentData.financialMetrics.restockingFeesCollected + currentData.financialMetrics.shippingFeesCollected) / 1000).toFixed(1)}k
+          </p>
+          <p className="text-xs text-slate-400 mt-1">Restocking + Shipping fees</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-orange-50">
+              <AlertCircle size={20} className="text-orange-600" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Net Impact</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">${(currentData.financialMetrics.netRevenueLost / 1000).toFixed(1)}k</p>
+          <p className="text-xs text-slate-400 mt-1">After fee recovery</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-purple-50">
+              <ShoppingBag size={20} className="text-purple-600" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">Avg Return Value</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">${currentData.financialMetrics.avgReturnValue.toFixed(2)}</p>
+          <p className="text-xs text-slate-400 mt-1">Per RMA</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="font-bold text-lg mb-6 text-slate-800">Financial Impact by Brand</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={brandComparisonData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="brand" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+                <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
+                <Legend />
+                <Bar dataKey="avgValue" fill="#ef4444" name="Avg Return Value ($)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="font-bold text-lg mb-6 text-slate-800">Recovery Metrics</h3>
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-slate-700">Fee Recovery Rate</span>
+                <span className="text-sm font-bold text-slate-900">
+                  {(((currentData.financialMetrics.restockingFeesCollected + currentData.financialMetrics.shippingFeesCollected) / currentData.financialMetrics.totalRevenueLost) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-3">
+                <div 
+                  className="h-3 rounded-full bg-green-500"
+                  style={{ width: `${((currentData.financialMetrics.restockingFeesCollected + currentData.financialMetrics.shippingFeesCollected) / currentData.financialMetrics.totalRevenueLost) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-slate-700">Exchange Conversion</span>
+                <span className="text-sm font-bold text-slate-900">
+                  {((currentData.resolutionTypes.Exchange / currentData.totalReturns) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-3">
+                <div 
+                  className="h-3 rounded-full bg-indigo-500"
+                  style={{ width: `${(currentData.resolutionTypes.Exchange / currentData.totalReturns) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-slate-700">Store Credit Retention</span>
+                <span className="text-sm font-bold text-slate-900">
+                  {((currentData.resolutionTypes['Store Credit'] / currentData.totalReturns) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-3">
+                <div 
+                  className="h-3 rounded-full bg-amber-500"
+                  style={{ width: `${(currentData.resolutionTypes['Store Credit'] / currentData.totalReturns) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <p className="text-sm font-semibold text-slate-700 mb-3">Revenue Retention Summary</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="text-xs text-green-600 font-medium mb-1">Retained via Exchange</p>
+                  <p className="text-lg font-bold text-green-700">
+                    ${((currentData.resolutionTypes.Exchange * currentData.financialMetrics.avgReturnValue) / 1000).toFixed(1)}k
+                  </p>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-lg">
+                  <p className="text-xs text-amber-600 font-medium mb-1">Retained via Credit</p>
+                  <p className="text-lg font-bold text-amber-700">
+                    ${((currentData.resolutionTypes['Store Credit'] * currentData.financialMetrics.avgReturnValue) / 1000).toFixed(1)}k
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderOperationsTab = () => (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h3 className="font-bold text-lg mb-6 text-slate-800">Processing Time Analysis by Stage</h3>
+        <div className="space-y-4">
+          {processingTimeData.map((stage, i) => (
+            <div key={i} className="flex items-center gap-4">
+              <div className="w-48">
+                <p className="text-sm font-semibold text-slate-700">{stage.stage}</p>
+                <p className="text-xs text-slate-400">Target: {stage.target}h</p>
+              </div>
+              <div className="flex-grow">
+                <div className="w-full bg-slate-100 rounded-full h-6 relative">
+                  <div 
+                    className={`h-6 rounded-full flex items-center justify-end pr-3 ${
+                      stage.status === 'good' ? 'bg-green-500' : 'bg-amber-500'
+                    }`}
+                    style={{ width: `${(stage.avgHours / stage.target) * 100}%` }}
+                  >
+                    <span className="text-xs font-bold text-white">{stage.avgHours}h</span>
+                  </div>
+                  <div 
+                    className="absolute top-0 w-0.5 h-6 bg-slate-400"
+                    style={{ left: '100%' }}
+                  ></div>
+                </div>
+              </div>
+              <div className="w-20 text-right">
+                <span className={`text-sm font-bold ${stage.status === 'good' ? 'text-green-600' : 'text-amber-600'}`}>
+                  {stage.status === 'good' ? '✓ On Track' : '⚠ Over'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 p-4 bg-slate-50 rounded-lg">
+          <p className="text-sm font-semibold text-slate-700 mb-2">Overall Processing Health</p>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Current average end-to-end processing: <strong>{currentData.avgProcessingDays} days</strong>. 
+            Validation stage running {((12.8 / 12) * 100 - 100).toFixed(0)}% over target - investigate backlog.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h3 className="font-bold text-lg mb-6 text-slate-800">Restockability Analysis</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="p-5 bg-green-50 rounded-lg border border-green-100">
+            <div className="flex items-center justify-between mb-3">
+              <CheckCircle className="text-green-600" size={24} />
+              <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">
+                {((currentData.restockability.restockable / currentData.totalReturns) * 100).toFixed(1)}%
+              </span>
+            </div>
+            <p className="text-sm font-medium text-green-700 mb-1">Restockable</p>
+            <p className="text-2xl font-bold text-green-900">{currentData.restockability.restockable}</p>
+            <p className="text-xs text-green-600 mt-2">Ready to return to inventory</p>
+          </div>
+
+          <div className="p-5 bg-red-50 rounded-lg border border-red-100">
+            <div className="flex items-center justify-between mb-3">
+              <XCircle className="text-red-600" size={24} />
+              <span className="text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-700">
+                {((currentData.restockability.nonRestockable / currentData.totalReturns) * 100).toFixed(1)}%
+              </span>
+            </div>
+            <p className="text-sm font-medium text-red-700 mb-1">Non-Restockable</p>
+            <p className="text-2xl font-bold text-red-900">{currentData.restockability.nonRestockable}</p>
+            <p className="text-xs text-red-600 mt-2">Write-offs & damages</p>
+          </div>
+
+          <div className="p-5 bg-amber-50 rounded-lg border border-amber-100">
+            <div className="flex items-center justify-between mb-3">
+              <Clock className="text-amber-600" size={24} />
+              <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                {((currentData.restockability.pending / currentData.totalReturns) * 100).toFixed(1)}%
+              </span>
+            </div>
+            <p className="text-sm font-medium text-amber-700 mb-1">Pending Validation</p>
+            <p className="text-2xl font-bold text-amber-900">{currentData.restockability.pending}</p>
+            <p className="text-xs text-amber-600 mt-2">Awaiting QC inspection</p>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <h4 className="text-sm font-semibold text-slate-700 mb-4">Restockability by Reason</h4>
+          <div className="space-y-3">
+            {[
+              { reason: 'Changed Mind', restockRate: 98, count: 298 },
+              { reason: 'Size/Fit Issue', restockRate: 89, count: 672 },
+              { reason: 'Not as Described', restockRate: 76, count: 267 },
+              { reason: 'Wrong Item', restockRate: 72, count: 142 },
+              { reason: 'Quality/Defect', restockRate: 23, count: 389 },
+              { reason: 'Damaged in Transit', restockRate: 12, count: 79 }
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <span className="text-xs font-medium text-slate-600 w-40">{item.reason}</span>
+                <div className="flex-grow">
+                  <div className="w-full bg-slate-100 rounded-full h-4">
+                    <div 
+                      className={`h-4 rounded-full ${item.restockRate > 70 ? 'bg-green-500' : item.restockRate > 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                      style={{ width: `${item.restockRate}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-700 w-16 text-right">{item.restockRate}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBrandComparisonTab = () => (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h3 className="font-bold text-lg mb-6 text-slate-800">Brand Performance Scorecard</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b-2 border-slate-200">
+                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Brand</th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-slate-600">Return Rate</th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-slate-600">Avg Value</th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-slate-600">Processing Time</th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-slate-600">Approval Rate</th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-slate-600">Restock Rate</th>
+                <th className="text-right py-3 px-4 text-sm font-semibold text-slate-600">Total Returns</th>
+              </tr>
+            </thead>
+            <tbody>
+              {brandComparisonData.map((brand, i) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <td className="py-4 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">{brand.brand[0]}</span>
+                      </div>
+                      <span className="font-semibold text-slate-800">{brand.brand}</span>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      parseFloat(brand.returnRate) > 10 ? 'bg-red-100 text-red-700' : 
+                      parseFloat(brand.returnRate) > 8 ? 'bg-amber-100 text-amber-700' : 
+                      'bg-green-100 text-green-700'
+                    }`}>
+                      {brand.returnRate}%
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-center font-semibold text-slate-700">
+                    ${brand.avgValue.toFixed(0)}
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      brand.processingTime <= 2.0 ? 'bg-green-100 text-green-700' : 
+                      brand.processingTime <= 2.5 ? 'bg-amber-100 text-amber-700' : 
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {brand.processingTime}d
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-center font-semibold text-slate-700">{brand.approvalRate}%</td>
+                  <td className="py-4 px-4 text-center font-semibold text-slate-700">{brand.restockRate}%</td>
+                  <td className="py-4 px-4 text-right font-bold text-slate-900">
+                    {rmaData[brand.brand].totalReturns}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="text-green-600" size={16} />
+              <p className="text-xs font-semibold text-green-700">Best Performer</p>
+            </div>
+            <p className="text-lg font-bold text-green-900">Jeep Apparel</p>
+            <p className="text-xs text-green-600">Lowest return rate at 5.3%</p>
+          </div>
+
+          <div className="p-4 bg-amber-50 rounded-lg border border-amber-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="text-amber-600" size={16} />
+              <p className="text-xs font-semibold text-amber-700">Fastest Processing</p>
+            </div>
+            <p className="text-lg font-bold text-amber-900">Hurley</p>
+            <p className="text-xs text-amber-600">1.9 day average turnaround</p>
+          </div>
+
+          <div className="p-4 bg-red-50 rounded-lg border border-red-100">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="text-red-600" size={16} />
+              <p className="text-xs font-semibold text-red-700">Needs Attention</p>
+            </div>
+            <p className="text-lg font-bold text-red-900">Diesel</p>
+            <p className="text-xs text-red-600">High return rate (8.6%) & processing time</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="font-bold text-lg mb-6 text-slate-800">Return Rate Comparison</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={brandComparisonData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+                <YAxis type="category" dataKey="brand" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} width={100} />
+                <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
+                <Bar dataKey="returnRate" fill="#ef4444" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="font-bold text-lg mb-6 text-slate-800">Processing Efficiency</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={brandComparisonData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="brand" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} />
+                <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
+                <Bar dataKey="processingTime" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8 font-sans">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Returns Analytics Dashboard</h1>
+            <p className="text-slate-600">Executive overview of return operations across all brands</p>
+          </div>
+          <div className="flex gap-3">
+            <select 
+              className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+            >
+              <option value="all">All Brands</option>
+              {brands.map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
+              <Filter size={16} /> Filter
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm">
+              <Download size={16} /> Export Report
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 border-b border-slate-200">
+          {[
+            { id: 'overview', label: 'Overview', icon: Eye },
+            { id: 'financial', label: 'Financial Impact', icon: DollarSign },
+            { id: 'operations', label: 'Operations', icon: Clock },
+            { id: 'brands', label: 'Brand Comparison', icon: TrendingUp }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors border-b-2 ${
+                activeTab === tab.id
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <tab.icon size={16} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && renderOverviewTab()}
+      {activeTab === 'financial' && renderFinancialTab()}
+      {activeTab === 'operations' && renderOperationsTab()}
+      {activeTab === 'brands' && renderBrandComparisonTab()}
+    </div>
+  );
+};
+
+export default App;

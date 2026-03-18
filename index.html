@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <title>eCompleteCommerce Executive Dashboard</title>
+    <script>
+      // Aggressively suppress benign errors that clutter the console in the AI Studio environment
+      const originalConsoleError = console.error;
+      const originalConsoleWarn = console.warn;
+
+      const noisePatterns = [
+        'failed to connect to websocket',
+        'A listener indicated an asynchronous response',
+        'message channel closed',
+        'Content Security Policy directive',
+        'Could not create web worker',
+        'Origin trial controlled feature not enabled',
+        'Unrecognized feature',
+        'No ID or name found in config'
+      ];
+
+      console.error = function(...args) {
+        const msg = String(args[0]);
+        if (noisePatterns.some(pattern => msg.includes(pattern))) return;
+        originalConsoleError.apply(console, args);
+      };
+
+      console.warn = function(...args) {
+        const msg = String(args[0]);
+        if (noisePatterns.some(pattern => msg.includes(pattern))) return;
+        originalConsoleWarn.apply(console, args);
+      };
+
+      window.addEventListener('unhandledrejection', function(event) {
+        const msg = event.reason && event.reason.message ? String(event.reason.message) : '';
+        if (noisePatterns.some(pattern => msg.includes(pattern))) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      });
+    </script>
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
