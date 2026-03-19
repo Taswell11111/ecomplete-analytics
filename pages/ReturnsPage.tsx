@@ -918,11 +918,6 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="hidden md:flex items-center bg-slate-50 rounded-xl p-1 border border-slate-200">
-                        <button className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-900 bg-white rounded-lg shadow-sm border border-slate-200">Last 7 Days</button>
-                        <button className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors">Last 30 Days</button>
-                        <button className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors">YTD</button>
-                    </div>
                     <button 
                         onClick={() => targetConfig && loadDashboard(targetConfig)} 
                         disabled={loading}
@@ -1122,10 +1117,10 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    {render_kpi_card("Revenue Retained", formatCurrency((displayMetrics as any).revenueRetained || 0), "Value of exchanges and store credit", (displayMetrics as any).popRevenueRetained, "#10b981", "#34d399", displayRmaLists?.Retained?.length || 0, "Retained")}
-                                    {render_kpi_card("Revenue Lost", formatCurrency((displayMetrics as any).revenueLost || 0), "Value of refunds", null, "#ef4444", "#f87171", displayRmaLists?.Lost?.length || 0, "Lost")}
-                                    {render_kpi_card("Avg Time to Resolution", `${((displayMetrics as any).averageTTR || 0).toFixed(1)} Days`, "Average days to complete an RMA", null, "#8b5cf6", "#a78bfa")}
-                                    {render_kpi_card("Aging Returns", (displayMetrics as any).agingReturnsCount || 0, "Pending RMAs older than 14 days", null, "#f59e0b", "#fbbf24", displayRmaLists?.Aging?.length || 0, "Aging")}
+                                    {render_kpi_card("Revenue Retained", formatCurrency((displayMetrics as any).metrics?.revenueRetained || 0), "Value of exchanges and store credit", (displayMetrics as any).metrics?.popRevenueRetained, "#10b981", "#34d399", displayRmaLists?.Retained?.length || 0, "Retained")}
+                                    {render_kpi_card("Revenue Lost", formatCurrency((displayMetrics as any).metrics?.revenueLost || 0), "Value of refunds", null, "#ef4444", "#f87171", displayRmaLists?.Lost?.length || 0, "Lost")}
+                                    {render_kpi_card("Avg Time to Resolution", `${((displayMetrics as any).metrics?.averageTTR || 0).toFixed(1)} Days`, "Average days to complete an RMA", null, "#8b5cf6", "#a78bfa")}
+                                    {render_kpi_card("Aging Returns", (displayMetrics as any).metrics?.agingReturnsCount || 0, "Pending RMAs older than 14 days", null, "#f59e0b", "#fbbf24", displayRmaLists?.Aging?.length || 0, "Aging")}
                                 </div>
 
                                 {/* Store RMA Data Table */}

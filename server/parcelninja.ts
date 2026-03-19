@@ -27,9 +27,9 @@ const BOUNTY_BRANDS = [
   },
   {
     name: 'Reebok',
-    username: process.env.PARCELNINJA_REEBOK_USERNAME || 'ENgsxyMbeqVGvGzTCpVdkZmsjz/VCDeF+NWHlRk3Hk0=',
-    password: process.env.PARCELNINJA_REEBOK_PASSWORD || 'EuoTNvCvp5imhOR2TZDe/fnKDxfoPK+EORSqfGvafZk=',
-    store_id: process.env.PARCELNINJA_REEBOK_STORE_ID || '7b0fb2ac-51bd-47ea-847e-cfb1584b4aa2'
+    username: process.env.PARCELNINJA_REEBOK_USERNAME || '9oZ10dMWlyQpEmS0Kw6xhIcKYXw8lB2az3Q0Zb+KBAw=',
+    password: process.env.PARCELNINJA_REEBOK_PASSWORD || 'Cq/Zn86P7FT3EN0C5qzOewAQssyvrDSbkzmQBSAOrMY=',
+    store_id: process.env.PARCELNINJA_REEBOK_STORE_ID || '963f57af-6f46-4d6d-b07c-dc4aa684cdfa'
   }
 ];
 
@@ -65,7 +65,7 @@ const createClient = (store: any) => {
       'X-Store-Id': store.store_id,
       'Accept': 'application/json'
     },
-    timeout: 15000
+    timeout: 60000
   });
 
 
@@ -78,11 +78,15 @@ const createClient = (store: any) => {
     if (config.retry >= 3) {
       return Promise.reject(err);
     }
-    if (err.response && (err.response.status === 429 || err.response.status === 503)) {
+    const isRateLimit = err.response && (err.response.status === 429 || err.response.status === 503);
+    const isTimeout = err.code === 'ECONNABORTED' || err.message.includes('timeout');
+    
+    if (isRateLimit || isTimeout) {
       config.retry += 1;
       // Use a longer backoff for rate limits: 5s, 10s, 20s
       const delay = Math.pow(2, config.retry - 1) * 5000; 
-      console.warn(`Parcelninja API rate limited (429). Retrying in ${delay}ms... (Attempt ${config.retry}/3)`);
+      const reason = isTimeout ? 'timeout' : 'rate limited (429/503)';
+      console.warn(`Parcelninja API ${reason}. Retrying in ${delay}ms... (Attempt ${config.retry}/3)`);
       await new Promise(resolve => setTimeout(resolve, delay));
       return client(config);
     }
@@ -251,7 +255,13 @@ export const getShipments = async (type: 'outbound' | 'inbound', days: number, s
       try {
         // Stagger requests by 500ms each
         await new Promise(resolve => setTimeout(resolve, i * 500));
+        console.log(`[Parcelninja] Fetching ${type} for ${store.name} (${startDate} to ${endDate})...`);
         const result = await fetchFn(store, startDate, endDate);
+        if (result.error) {
+          console.error(`[Parcelninja] Error for ${store.name}: ${result.error}`);
+        } else {
+          console.log(`[Parcelninja] Found ${result.data.length} ${type} for ${store.name}`);
+        }
         return { storeName: store.name, data: result.data, error: result.error };
       } catch (e: any) {
         let message = e.message;
@@ -260,6 +270,7 @@ export const getShipments = async (type: 'outbound' | 'inbound', days: number, s
         } else if (e.response && e.response.status === 429) {
           message = 'Rate exceeded';
         }
+        console.error(`[Parcelninja] Exception for ${store.name}: ${message}`);
         return { storeName: store.name, data: [], error: message || 'Unknown error' };
       }
     })
@@ -283,7 +294,7 @@ export const getShipments = async (type: 'outbound' | 'inbound', days: number, s
 };
 
 export const testParcelninjaConnection = async (appContext: 'levis' | 'bounty' | 'admin' = 'admin') => {
-  const results: Record<string, { success: boolean, message?: string }> = {};
+  const results: Record<string, { success: boolean, message?: string, lastOutbound?: any }> = {};
   const storesToTest = appContext === 'levis' ? LEVIS : (appContext === 'bounty' ? BOUNTY_BRANDS : STORES);
   console.log(`Testing Parcelninja connection. AppContext: ${appContext}, Number of stores: ${storesToTest.length}, Stores: ${storesToTest.map(s => s.name).join(', ')}`);
   
@@ -293,8 +304,34 @@ export const testParcelninjaConnection = async (appContext: 'levis' | 'bounty' |
       try {
         await new Promise(resolve => setTimeout(resolve, i * 500));
         const client = createClient(store);
-        await client.get('/outbounds', { params: { pageSize: 1, page: 1 } });
-        return { storeName: store.name, success: true };
+        
+        // Fetch the most recent outbound to verify connection and see real data
+        console.log(`[Parcelninja Test] Fetching last outbound for ${store.name}...`);
+        const res = await client.get('/outbounds', { 
+          params: { 
+            pageSize: 1, 
+            page: 1,
+            orderBy: 'createDate',
+            orderDirection: 'desc'
+          } 
+        });
+        
+        const lastOutbound = res.data?.outbounds?.[0] || null;
+        if (lastOutbound) {
+          console.log(`[Parcelninja Test] Found last outbound for ${store.name}: ${lastOutbound.outboundNo} created at ${lastOutbound.createDate}`);
+        } else {
+          console.log(`[Parcelninja Test] No outbounds found for ${store.name} (Store ID: ${store.store_id})`);
+        }
+
+        const maskedUser = store.username.substring(0, 4) + '...' + store.username.substring(store.username.length - 4);
+        const storeInfo = `Store ID: ${store.store_id} | User: ${maskedUser}`;
+
+        return { 
+          storeName: store.name, 
+          success: true, 
+          lastOutbound,
+          message: `Connected successfully. ${storeInfo}`
+        };
       } catch (e: any) {
         let message = e.message;
         if (e.response) {
@@ -312,7 +349,14 @@ export const testParcelninjaConnection = async (appContext: 'levis' | 'bounty' |
             message = typeof data === 'object' ? JSON.stringify(data) : data;
           }
         }
-        return { storeName: store.name, success: false, message };
+        console.error(`[Parcelninja Test] Connection failed for ${store.name}: ${message}`);
+        const maskedUser = store.username.substring(0, 4) + '...' + store.username.substring(store.username.length - 4);
+        const storeInfo = `Store ID: ${store.store_id} | User: ${maskedUser}`;
+        return { 
+          storeName: store.name, 
+          success: false, 
+          message: `${message} (${storeInfo})` 
+        };
       }
     })
   );
@@ -320,8 +364,8 @@ export const testParcelninjaConnection = async (appContext: 'levis' | 'bounty' |
   let overallSuccess = true;
   connectionResults.forEach((result) => {
     if (result.status === 'fulfilled') {
-      const { storeName, success, message } = result.value;
-      results[storeName] = { success, message };
+      const { storeName, success, message, lastOutbound } = result.value;
+      results[storeName] = { success, message, lastOutbound };
       if (!success) overallSuccess = false;
     } else {
       overallSuccess = false;

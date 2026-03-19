@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Loader2, X, Terminal, ShieldCheck, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, X, Terminal, ShieldCheck, AlertCircle, Package, RefreshCw } from 'lucide-react';
 import { testConnection as testFreshdesk } from '../services/freshdeskService';
-import { testReturnGoConnection as testReturnGo } from '../services/returnGoService';
+import { testReturnGoRmas as testReturnGo } from '../services/returnGoService';
 import { testParcelninjaConnection as testParcelninja } from '../services/parcelninjaService';
 import { testGeminiConnection as testGemini } from '../services/geminiService';
-import { RETURNGO_STORE_URL, BOUNTY_DIESEL_URL, BOUNTY_HURLEY_URL, BOUNTY_JEEP_URL, BOUNTY_REEBOK_URL, BOUNTY_SUPERDRY_URL } from '../constants';
+import { RETURNGO_LEVIS_STORE_URL } from '../constants';
 
 interface ConnectionLog {
     service: string;
@@ -14,6 +14,7 @@ interface ConnectionLog {
     message: string;
     timestamp: string;
     details?: string;
+    extraInfo?: React.ReactNode;
 }
 
 interface ConnectionValidatorProps {
@@ -33,10 +34,10 @@ export const ConnectionValidator: React.FC<ConnectionValidatorProps> = ({ isOpen
     const [hasError, setHasError] = useState(false);
     const [showDetails, setShowDetails] = useState<string | null>(null);
 
-    const updateLog = (service: string, status: 'success' | 'failed', message: string, details?: string) => {
+    const updateLog = (service: string, status: 'success' | 'failed', message: string, details?: string, extraInfo?: React.ReactNode) => {
         setLogs(prev => prev.map(log => 
             log.service === service 
-                ? { ...log, status, message, timestamp: new Date().toLocaleTimeString(), details } 
+                ? { ...log, status, message, timestamp: new Date().toLocaleTimeString(), details, extraInfo } 
                 : log
         ));
     };
@@ -57,41 +58,81 @@ export const ConnectionValidator: React.FC<ConnectionValidatorProps> = ({ isOpen
             try {
                 const pnResult = await testParcelninja(appContext);
                 let details = '';
+                let extraInfo: React.ReactNode = null;
+
                 if (pnResult.details && Object.keys(pnResult.details).length > 0) {
-                    details = Object.entries(pnResult.details as Record<string, any>)
+                    const storeResults = Object.entries(pnResult.details as Record<string, any>);
+                    details = storeResults
                         .map(([store, res]) => `${store}: ${res.success ? 'OK' : 'FAILED (' + res.message + ')'}`)
                         .join('\n');
+
+                    extraInfo = (
+                        <div className="mt-4 space-y-2">
+                            <div className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                                <Package size={10} />
+                                Recent Outbounds
+                            </div>
+                            <div className="grid grid-cols-1 gap-1.5">
+                                {storeResults.map(([store, res]) => (
+                                    <div key={store} className="flex items-center justify-between p-2 bg-slate-950/50 rounded-lg border border-slate-800/50">
+                                        <span className="text-[9px] font-bold text-slate-400">{store}</span>
+                                        {res.lastOutbound ? (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[9px] font-mono text-emerald-400">{res.lastOutbound.outboundNo}</span>
+                                                <span className="text-[8px] text-slate-600">{new Date(res.lastOutbound.createDate).toLocaleDateString()}</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[8px] text-slate-600 italic">No data</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
                 } else if (!pnResult.success) {
                     details = pnResult.message;
                 }
-                updateLog('Parcelninja', pnResult.success ? 'success' : 'failed', pnResult.message, details);
+                updateLog('Parcelninja', pnResult.success ? 'success' : 'failed', pnResult.message, details, extraInfo);
             } catch (e: any) {
                 updateLog('Parcelninja', 'failed', 'Network failure', e.message);
             }
 
             // ReturnGo
             try {
-                if (appContext === 'levis') {
-                    const rgResult = await testReturnGo(RETURNGO_STORE_URL);
-                    updateLog('ReturnGo', rgResult.success ? 'success' : 'failed', rgResult.message, rgResult.success ? undefined : rgResult.message);
+                const rgResults = await testReturnGo();
+                const storeResults = Object.entries(rgResults);
+                const failed = storeResults.filter(([_, r]) => !r.success);
+                
+                let details = storeResults.map(([name, r]) => `${name}: ${r.success ? 'OK' : 'FAILED (' + r.error + ')'}`).join('\n');
+                
+                const extraInfo = (
+                    <div className="mt-4 space-y-2">
+                        <div className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                            <RefreshCw size={10} />
+                            Recent RMAs
+                        </div>
+                        <div className="grid grid-cols-1 gap-1.5">
+                            {storeResults.map(([name, r]) => (
+                                <div key={name} className="flex items-center justify-between p-2 bg-slate-950/50 rounded-lg border border-slate-800/50">
+                                    <span className="text-[9px] font-bold text-slate-400">{name}</span>
+                                    {r.success && r.rmaId ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-mono text-blue-400">{r.rmaId}</span>
+                                            <span className="text-[8px] text-slate-600">{r.daysSinceUpdate}d ago</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-[8px] text-slate-600 italic">{r.success ? 'No RMAs' : 'Error'}</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+
+                if (failed.length === 0) {
+                    updateLog('ReturnGo', 'success', `All ${storeResults.length} stores verified`, undefined, extraInfo);
                 } else {
-                    // Test all 5 Bounty stores
-                    const stores = [
-                        { name: 'Diesel', url: BOUNTY_DIESEL_URL },
-                        { name: 'Hurley', url: BOUNTY_HURLEY_URL },
-                        { name: 'Jeep', url: BOUNTY_JEEP_URL },
-                        { name: 'Reebok', url: BOUNTY_REEBOK_URL },
-                        { name: 'Superdry', url: BOUNTY_SUPERDRY_URL }
-                    ];
-                    
-                    const results = await Promise.all(stores.map(async s => ({ ...await testReturnGo(s.url), name: s.name })));
-                    const failed = results.filter(r => !r.success);
-                    
-                    if (failed.length === 0) {
-                        updateLog('ReturnGo', 'success', 'All 5 Bounty stores verified');
-                    } else {
-                        updateLog('ReturnGo', 'failed', `${failed.length}/5 Bounty stores failed`, failed.map(f => `${f.name}: ${f.message}`).join('\n'));
-                    }
+                    updateLog('ReturnGo', 'failed', `${failed.length}/${storeResults.length} stores failed`, details, extraInfo);
                 }
             } catch (e: any) {
                 updateLog('ReturnGo', 'failed', 'Network failure', e.message);
@@ -201,6 +242,14 @@ export const ConnectionValidator: React.FC<ConnectionValidatorProps> = ({ isOpen
                                     </button>
                                 )}
                             </div>
+
+                            {log.extraInfo && (
+                                <div className="px-4 pb-3">
+                                    <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800/50 font-mono text-[10px] text-slate-400 leading-relaxed">
+                                        {log.extraInfo}
+                                    </div>
+                                </div>
+                            )}
 
                             <AnimatePresence>
                                 {showDetails === log.service && log.details && (

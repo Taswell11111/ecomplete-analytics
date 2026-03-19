@@ -1,5 +1,5 @@
 import { ReturnGoRMA, ReturnGoMetrics, BountyDashboardData, BountyMetricData, ProductStats, RmaShortInfo, FullReturnGoDashboardData } from '../types';
-import { RETURNGO_STORE_URL } from '../constants';
+import { RETURNGO_LEVIS_STORE_URL } from '../constants';
 import { format, parseISO, isValid, subDays, startOfDay, eachDayOfInterval, isSameDay, isAfter, differenceInDays } from 'date-fns';
 
 const ACTIVE_STATUSES = "Pending,Approved,Received"; 
@@ -115,6 +115,28 @@ export const testReturnGoConnection = async (shopName: string): Promise<{ succes
         return { success: true, message: data.message };
     } catch (error: any) {
         return { success: false, message: error.message };
+    }
+};
+
+/**
+ * Tests the connection to ReturnGo and fetches the most recent RMA for each store
+ */
+export const testReturnGoRmas = async (): Promise<Record<string, any>> => {
+    try {
+        const response = await fetch('/api/returngo/test-rmas', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+        }
+        
+        return await response.json();
+    } catch (error: any) {
+        console.error('Error testing ReturnGo RMAs:', error);
+        throw error;
     }
 };
 

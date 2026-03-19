@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Group, ConnectionMode, TestConnectionStatus, TicketScope } from './types';
-import { ECOMPLETE_GROUPS, CONSOLIDATED_GROUP_ID, RETURNGO_STORE_URL, BOUNTY_DIESEL_URL } from './constants';
+import { ECOMPLETE_GROUPS, CONSOLIDATED_GROUP_ID, RETURNGO_LEVIS_STORE_URL, BOUNTY_DIESEL_URL } from './constants';
 import { testConnection } from './services/freshdeskService';
 import { testReturnGoConnection } from './services/returnGoService';
 import { Activity, LayoutDashboard, Truck, Undo2, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
@@ -9,7 +9,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { InsightReportPage } from './pages/InsightReportPage';
-import { ShippingDashboard } from './components/shipping/Dashboard';
+import { ShippingDashboard } from './shipping/Dashboard';
 import { ReturnsPage } from './pages/ReturnsPage';
 import { ConnectionValidator } from './components/ConnectionValidator';
 
@@ -71,6 +71,10 @@ const App: React.FC = () => {
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   const playAudio = (base64: string) => {
+    if (!base64) {
+        console.error("Audio base64 is empty");
+        return;
+    }
     if (audioRef.current) {
         audioRef.current.pause();
     }
@@ -141,7 +145,7 @@ const App: React.FC = () => {
       setReturnGoTestStatus('testing');
       setReturnGoTestError(null);
       // Test with a default shop name based on context or just a common one
-      const shopName = appContext === 'levis' ? RETURNGO_STORE_URL : BOUNTY_DIESEL_URL;
+      const shopName = appContext === 'levis' ? RETURNGO_LEVIS_STORE_URL : BOUNTY_DIESEL_URL;
       const result = await testReturnGoConnection(shopName);
       setReturnGoTestStatus(result.success ? 'success' : 'failed');
       if (!result.success) {
@@ -241,8 +245,8 @@ const App: React.FC = () => {
                           className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden ${activePage === 'dashboard' ? 'bg-ecomplete-primary text-white shadow-[0_10px_30px_rgba(44,62,80,0.5)]' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'} ${!sidebarOpen && 'justify-center px-0'}`}
                       >
                           {activePage === 'dashboard' && <div className="absolute left-0 top-0 w-1.5 h-full bg-ecomplete-accent"></div>}
-                          <LayoutDashboard size={22} className={`shrink-0 ${activePage === 'dashboard' ? 'text-ecomplete-accent' : 'text-slate-600 group-hover:text-slate-300'}`} />
-                          {sidebarOpen && <span className="font-black text-xs uppercase tracking-wider text-left leading-tight animate-in fade-in duration-300">Freshdesk Intelligence</span>}
+                          <LayoutDashboard size={22} className={`shrink-0 ${activePage === 'dashboard' ? 'text-ecomplete-accent' : (!sidebarOpen ? 'text-white' : 'text-slate-600 group-hover:text-slate-300')}`} />
+                          {sidebarOpen && <span className="font-black text-xs uppercase tracking-wider text-left leading-tight animate-in fade-in duration-300">Support Intelligence</span>}
                       </button>
 
                       {sidebarOpen && (
@@ -263,7 +267,7 @@ const App: React.FC = () => {
                       className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden ${activePage === 'shipping' ? 'bg-ecomplete-primary text-white shadow-[0_10px_30px_rgba(44,62,80,0.5)]' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'} ${!sidebarOpen && 'justify-center px-0'}`}
                   >
                       {activePage === 'shipping' && <div className="absolute left-0 top-0 w-1.5 h-full bg-ecomplete-accent"></div>}
-                      <Truck size={22} className={`shrink-0 ${activePage === 'shipping' ? 'text-ecomplete-accent' : 'text-slate-600 group-hover:text-slate-300'}`} />
+                      <Truck size={22} className={`shrink-0 ${activePage === 'shipping' ? 'text-ecomplete-accent' : (!sidebarOpen ? 'text-white' : 'text-slate-600 group-hover:text-slate-300')}`} />
                       {sidebarOpen && <span className="font-black text-xs uppercase tracking-wider text-left leading-tight animate-in fade-in duration-300">Shipping Intelligence</span>}
                   </button>
 
@@ -272,7 +276,7 @@ const App: React.FC = () => {
                       className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden ${activePage === 'returns' ? 'bg-ecomplete-primary text-white shadow-[0_10px_30px_rgba(44,62,80,0.5)]' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'} ${!sidebarOpen && 'justify-center px-0'}`}
                   >
                       {activePage === 'returns' && <div className="absolute left-0 top-0 w-1.5 h-full bg-ecomplete-accent"></div>}
-                      <Undo2 size={22} className={`shrink-0 ${activePage === 'returns' ? 'text-ecomplete-accent' : 'text-slate-600 group-hover:text-slate-300'}`} />
+                      <Undo2 size={22} className={`shrink-0 ${activePage === 'returns' ? 'text-ecomplete-accent' : (!sidebarOpen ? 'text-white' : 'text-slate-600 group-hover:text-slate-300')}`} />
                       {sidebarOpen && <span className="font-black text-xs uppercase tracking-wider text-left leading-tight animate-in fade-in duration-300">Returns Intelligence</span>}
                   </button>
               </nav>
@@ -301,7 +305,7 @@ const App: React.FC = () => {
               
               <button 
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="absolute -right-3 top-40 bg-white border border-slate-200 rounded-full p-1 shadow-md text-slate-500 hover:text-ecomplete-primary transition-colors z-50"
+                  className="absolute -right-3 top-32 bg-white border border-slate-200 rounded-full p-1 shadow-md text-slate-500 hover:text-ecomplete-primary transition-colors z-50"
               >
                   {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
               </button>

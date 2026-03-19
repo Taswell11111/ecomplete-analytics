@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getSortedRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
 import { StatusBadge } from './StatusBadge';
-import { formatDateZA } from '../../utils/dateUtils';
-import { ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { formatDateZA } from '../utils/dateUtils';
+import { ChevronDown, ChevronRight, Search, AlertTriangle } from 'lucide-react';
 
 const columnHelper = createColumnHelper<any>();
 
-export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
+export const InboundsTable: React.FC<{ data: any[] }> = ({ data }) => {
   const [globalFilter, setGlobalFilter] = useState('');
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [showVarianceOnly, setShowVarianceOnly] = useState(false);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
@@ -25,8 +26,10 @@ export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
       ),
     }),
     columnHelper.accessor('_store', { header: 'Store' }),
+    columnHelper.accessor('type.description', { header: 'Type' }),
     columnHelper.accessor('channelId', { header: 'Channel ID' }),
     columnHelper.accessor('clientId', { header: 'Client Ref' }),
+    columnHelper.accessor('supplierReference', { header: 'Supplier Ref' }),
     columnHelper.accessor('id', { header: 'PNJ ID' }),
     columnHelper.accessor('createDate', {
       header: 'Created Date',
@@ -36,23 +39,38 @@ export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
       header: 'Status',
       cell: info => <StatusBadge status={info.getValue() || 'Unknown'} />,
     }),
-    columnHelper.accessor('deliveryInfo.courierName', { header: 'Courier' }),
-    columnHelper.accessor('deliveryInfo.trackingNo', { header: 'Waybill' }),
-    columnHelper.accessor('deliveryInfo.customer', { header: 'Customer' }),
-    columnHelper.accessor('items.length', { header: 'Items' }),
+    columnHelper.accessor('deliveryInfo.customer', { 
+      header: 'Sender',
+      cell: info => info.getValue() || info.row.original.pickupInfo?.recipient || 'Unknown'
+    }),
+    columnHelper.accessor(row => row.items?.length || 0, { 
+      id: 'items',
+      header: 'Items' 
+    }),
+    columnHelper.display({
+      id: 'variance',
+      header: 'Variance',
+      cell: ({ row }) => {
+        const hasVariance = row.original.items?.some((item: any) => item.qty !== item.receivedQty && item.receivedQty !== 0);
+        return hasVariance ? <AlertTriangle size={16} className="text-amber-500" /> : null;
+      }
+    }),
   ];
 
   const filteredData = React.useMemo(() => {
-    if (!globalFilter) return data;
+    let result = data;
+    if (showVarianceOnly) {
+      result = result.filter(row => row.items?.some((item: any) => item.qty !== item.receivedQty && item.receivedQty !== 0));
+    }
+    if (!globalFilter) return result;
+    
     const lowerFilter = globalFilter.toLowerCase();
-    return data.filter(row => {
+    return result.filter(row => {
       return Object.values(row).some(val => 
         String(val).toLowerCase().includes(lowerFilter)
-      ) || row.deliveryInfo?.trackingNo?.toLowerCase().includes(lowerFilter)
-        || row.deliveryInfo?.customer?.toLowerCase().includes(lowerFilter)
-        || row.status?.description?.toLowerCase().includes(lowerFilter);
+      ) || row.status?.description?.toLowerCase().includes(lowerFilter);
     });
-  }, [data, globalFilter]);
+  }, [data, globalFilter, showVarianceOnly]);
 
   const table = useReactTable({
     data: filteredData,
@@ -68,18 +86,29 @@ export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
   });
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-6">
       <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-        <h3 className="font-semibold text-slate-800">Shipments</h3>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
-            type="text"
-            placeholder="Search shipments..."
-            value={globalFilter}
-            onChange={e => setGlobalFilter(e.target.value)}
-            className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <h3 className="font-semibold text-slate-800">Inbounds</h3>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={showVarianceOnly} 
+              onChange={e => setShowVarianceOnly(e.target.checked)}
+              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            Show Variance Only
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search inbounds..."
+              value={globalFilter}
+              onChange={e => setGlobalFilter(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
       </div>
       
@@ -122,19 +151,24 @@ export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
                                 <tr>
                                   <th className="px-3 py-2 text-left">SKU</th>
                                   <th className="px-3 py-2 text-left">Name</th>
-                                  <th className="px-3 py-2 text-right">Qty</th>
-                                  <th className="px-3 py-2 text-left">Return Reason</th>
+                                  <th className="px-3 py-2 text-right">Expected</th>
+                                  <th className="px-3 py-2 text-right">Received</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {row.original.items?.map((item: any, idx: number) => (
-                                  <tr key={idx} className="border-t border-slate-100">
-                                    <td className="px-3 py-2 font-mono text-slate-600">{item.itemNo}</td>
-                                    <td className="px-3 py-2">{item.name}</td>
-                                    <td className="px-3 py-2 text-right font-medium">{item.qty}</td>
-                                    <td className="px-3 py-2 text-orange-600">{item.returnReason || '-'}</td>
-                                  </tr>
-                                ))}
+                                {row.original.items?.map((item: any, idx: number) => {
+                                  const hasVariance = item.qty !== item.receivedQty && item.receivedQty !== 0;
+                                  return (
+                                    <tr key={idx} className={`border-t border-slate-100 ${hasVariance ? 'bg-amber-50' : ''}`}>
+                                      <td className="px-3 py-2 font-mono text-slate-600">{item.itemNo}</td>
+                                      <td className="px-3 py-2">{item.name}</td>
+                                      <td className="px-3 py-2 text-right font-medium">{item.qty}</td>
+                                      <td className={`px-3 py-2 text-right font-bold ${hasVariance ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                        {item.receivedQty}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -144,7 +178,7 @@ export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
                           <div className="space-y-3">
                             {row.original.events?.map((event: any, idx: number) => (
                               <div key={idx} className="flex items-start gap-3">
-                                <div className="mt-1 w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                                <div className="mt-1 w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
                                 <div>
                                   <p className="text-xs font-medium text-slate-800">{event.description}</p>
                                   <p className="text-[10px] text-slate-500">{formatDateZA(event.date || event.createDate)}</p>

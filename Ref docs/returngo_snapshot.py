@@ -9,7 +9,6 @@ from urllib3.util.retry import Retry
 from datetime import datetime, timezone
 
 # --- CONFIGURATION ---
-MY_API_KEY = "G0dxSEprxa5iOAIsK5X6g7fCDdPl09q2882osmWD"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SENDER_EMAIL = "taswell@ecomplete.co.za"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { getStatusColor } from '../../utils/statusConfig';
+import { getStatusColor } from '../utils/statusConfig';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 

@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { useShipments } from '../../hooks/useShipments';
-import { useInbounds } from '../../hooks/useInbounds';
+import { useShipments } from '../hooks/useShipments';
+import { useInbounds } from '../hooks/useInbounds';
 import { OutboundKpis, InboundKpis } from './KpiCards';
 import { OutboundStatusChart, OutboundVolumeChart, InboundStatusChart } from './Charts';
 import { ShipmentsTable } from './ShipmentsTable';
-import { STORES } from '../../server/parcelninja';
+import { STORES } from '../server/parcelninja';
 import { InboundsTable } from './InboundsTable';
 import { ReturnsPanel } from './ReturnsPanel';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export const ShippingDashboard: React.FC<{ appContext: 'levis' | 'bounty' | 'admin' }> = ({ appContext }) => {
-  const [days, setDays] = useState(0); // Default to Today (0)
+  const [days, setDays] = useState(7); // Default to Last 7 Days (7)
   const [showOnlyPending, setShowOnlyPending] = useState(true);
   const [selectedStore, setSelectedStore] = useState<string>('All Stores');
   const { data: outboundsData, isLoading: outLoading, error: outError, refetch: refetchOut } = useShipments(days);

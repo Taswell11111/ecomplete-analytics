@@ -1,5 +1,5 @@
 {
-  "name": "Copy of eComplete Analytics Centre",
+  "name": "eComplete Analytics Centre2",
   "description": "A specialized dashboard for Ecomplete Commerce to visualise Freshdesk ticket activity with Gemini-powered summaries, adhering to strict styling and data fetching constraints.",
   "requestFramePermissions": [
     "microphone",

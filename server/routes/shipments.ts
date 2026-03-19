@@ -5,7 +5,7 @@ const router = Router();
 
 router.get('/parcelninja/test-connection', async (req, res) => {
   try {
-    const appContext = req.query.appContext as 'levis' | 'bounty' | 'admin' || 'admin';
+    const appContext = (req.query.appContext as 'levis' | 'bounty' | 'admin') || 'admin';
     const result = await testParcelninjaConnection(appContext);
     res.json(result);
   } catch (error: any) {

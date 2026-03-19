@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { useShipments } from '../../hooks/useShipments';
-import { useInbounds } from '../../hooks/useInbounds';
+import { useShipments } from '../hooks/useShipments';
+import { useInbounds } from '../hooks/useInbounds';
 import { StatusBadge } from './StatusBadge';
-import { formatDateZA } from '../../utils/dateUtils';
+import { formatDateZA } from '../utils/dateUtils';
 import { differenceInDays, parseISO } from 'date-fns';
 
 export const ReturnsPanel: React.FC<{ appContext: 'levis' | 'bounty' | 'admin' }> = ({ appContext }) => {
@@ -12,7 +12,7 @@ export const ReturnsPanel: React.FC<{ appContext: 'levis' | 'bounty' | 'admin' }
   const filterByContext = (data: any[]) => {
     if (!data) return [];
     if (appContext === 'levis') return data.filter(d => d._store === "Levi's");
-    if (appContext === 'bounty') return data.filter(d => d._store !== "Levi's");
+    if (appContext === 'bounty') return data.filter(d => d._store !== "bounty");
     return data;
   };
 

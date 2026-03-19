@@ -145,6 +145,88 @@ export const generateReportHtml = (
     const catData = CATEGORIES.map(c => catCounts[c]).join(',');
     const catColors = CATEGORIES.map(c => `"${getCategoryColor(c)}"`).join(',');
 
+    // --- FRESHDESK PULSE STATS ---
+    const groupStats: Record<string, any> = {};
+    const responseAgingStats: Record<string, any> = {};
+    let respondedCount = 0;
+    let unrespondedCount = 0;
+    
+    activities.forEach(a => {
+        const t = a.ticket;
+        const gName = a.brandName || 'Unassigned';
+        
+        if (!groupStats[gName]) {
+            groupStats[gName] = { total: 0, age1: 0, age2: 0, age5: 0, agePlus: 0, statusCounts: { 'Open': 0, 'Pending/Waiting': 0 } };
+            responseAgingStats[gName] = { 
+                no_response_1: 0, responded_1: 0,
+                no_response_2: 0, responded_2: 0,
+                no_response_5: 0, responded_5: 0,
+                no_response_plus: 0, responded_plus: 0
+            };
+        }
+        groupStats[gName].total++;
+
+        const daysOld = Math.floor((new Date().getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60 * 24));
+        
+        let isRequesterLast = true;
+        if (a.conversations && a.conversations.length > 0) {
+            const lastMsg = a.conversations[a.conversations.length - 1];
+            isRequesterLast = lastMsg.incoming;
+        } else {
+            isRequesterLast = t.status === 2;
+        }
+
+        const hasResponded = !isRequesterLast;
+        if (hasResponded) respondedCount++;
+        else unrespondedCount++;
+
+        if (daysOld <= 1) {
+            groupStats[gName].age1++;
+            if (hasResponded) responseAgingStats[gName].responded_1++;
+            else responseAgingStats[gName].no_response_1++;
+        } else if (daysOld <= 2) {
+            groupStats[gName].age2++;
+            if (hasResponded) responseAgingStats[gName].responded_2++;
+            else responseAgingStats[gName].no_response_2++;
+        } else if (daysOld <= 5) {
+            groupStats[gName].age5++;
+            if (hasResponded) responseAgingStats[gName].responded_5++;
+            else responseAgingStats[gName].no_response_5++;
+        } else {
+            groupStats[gName].agePlus++;
+            if (hasResponded) responseAgingStats[gName].responded_plus++;
+            else responseAgingStats[gName].no_response_plus++;
+        }
+
+        if (t.status === 2) {
+            groupStats[gName].statusCounts['Open']++;
+        } else {
+            groupStats[gName].statusCounts['Pending/Waiting']++;
+        }
+    });
+
+    const sortedGroups = Object.entries(groupStats).sort((a, b) => b[1].total - a[1].total);
+    const groupLabels = sortedGroups.map(g => `"${g[0]}"`).join(',');
+    const groupTotalData = sortedGroups.map(g => g[1].total).join(',');
+    const groupOpenData = sortedGroups.map(g => g[1].statusCounts['Open']).join(',');
+    const groupPendingData = sortedGroups.map(g => g[1].statusCounts['Pending/Waiting']).join(',');
+
+    const age1Data = sortedGroups.map(g => g[1].age1).join(',');
+    const age2Data = sortedGroups.map(g => g[1].age2).join(',');
+    const age5Data = sortedGroups.map(g => g[1].age5).join(',');
+    const agePlusData = sortedGroups.map(g => g[1].agePlus).join(',');
+
+    const resp1Data = sortedGroups.map(g => responseAgingStats[g[0]].responded_1).join(',');
+    const noResp1Data = sortedGroups.map(g => responseAgingStats[g[0]].no_response_1).join(',');
+    const resp2Data = sortedGroups.map(g => responseAgingStats[g[0]].responded_2).join(',');
+    const noResp2Data = sortedGroups.map(g => responseAgingStats[g[0]].no_response_2).join(',');
+    const resp5Data = sortedGroups.map(g => responseAgingStats[g[0]].responded_5).join(',');
+    const noResp5Data = sortedGroups.map(g => responseAgingStats[g[0]].no_response_5).join(',');
+    const respPlusData = sortedGroups.map(g => responseAgingStats[g[0]].responded_plus).join(',');
+    const noRespPlusData = sortedGroups.map(g => responseAgingStats[g[0]].no_response_plus).join(',');
+
+    const responseRate = activities.length > 0 ? Math.round((respondedCount / activities.length) * 100) : 0;
+
     return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Executive Report - ${selectedGroup.name}</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&display=swap');
@@ -289,10 +371,14 @@ export const generateReportHtml = (
 
       <div class="active-queue-card">
           <div class="active-queue-accent"></div>
-          <div style="font-weight:900; color:#94a3b8; text-transform:uppercase; font-size:14px; letter-spacing:4px; margin-bottom:15px;">Total Active Ticket Queue</div>
-          <div style="font-size:110px; font-weight:900; color:#2C3E50; line-height:1;">${displayMetrics.activeTickets}</div>
-          <div style="font-size:24px; font-weight:900; color:#1e293b; margin-top:20px; text-transform:uppercase;">${selectedGroup.name}</div>
-          <div style="height:150px; width:100%; margin-top:40px;"><canvas id="agingChart"></canvas></div>
+          <div style="font-weight:900; color:#94a3b8; text-transform:uppercase; font-size:14px; letter-spacing:4px; margin-bottom:30px;">Total Active Ticket Queue</div>
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:30px;">
+              <div style="display:flex; flex-direction:column; align-items:center;">
+                  <div style="font-size:110px; font-weight:900; color:#2C3E50; line-height:1; margin-bottom:10px;">${displayMetrics.activeTickets}</div>
+                  <div style="font-size:14px; font-weight:900; color:#94a3b8; text-transform:uppercase; letter-spacing:2px;">${format(new Date(), 'dd MMM yyyy')}</div>
+              </div>
+              <div style="height:250px; width:100%; max-width:800px; margin-left:-40px;"><canvas id="agingChart"></canvas></div>
+          </div>
       </div>
 
       <div class="stat-grid">
@@ -309,6 +395,37 @@ export const generateReportHtml = (
               <h3 style="font-weight:900; text-transform:uppercase; color:#2C3E50; font-size:28px; display:flex; align-items:center; gap:15px;">${iconActivity} Sequential Volume Flow</h3>
           </div>
           <div style="height:350px;"><canvas id="timelineChart"></canvas></div>
+      </div>
+
+      <div class="section-card" style="padding:60px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
+              <h3 style="font-weight:900; text-transform:uppercase; color:#2C3E50; font-size:28px; display:flex; align-items:center; gap:15px;">Support Ecosystem Pulse Check</h3>
+          </div>
+          
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:30px; margin-bottom:40px;">
+              <div class="stat-box" style="background:#f8fafc;">
+                  <div class="stat-lbl">Response Rate</div>
+                  <div class="stat-val" style="color:${responseRate < 50 ? '#ef4444' : responseRate < 80 ? '#f59e0b' : '#22c55e'}">${responseRate}%</div>
+                  <div style="font-size:12px; color:#64748b; margin-top:10px; font-weight:700;">${respondedCount} Responded / ${unrespondedCount} Waiting</div>
+              </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr; gap:40px; margin-bottom:40px;">
+              <div>
+                  <h4 style="font-weight:900; text-transform:uppercase; font-size:14px; margin-bottom:20px; color:#64748b;">Active Volume by Group</h4>
+                  <div style="height:250px;"><canvas id="pulseGroupChart"></canvas></div>
+              </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:40px;">
+              <div>
+                  <h4 style="font-weight:900; text-transform:uppercase; font-size:14px; margin-bottom:20px; color:#64748b;">Aging Analysis by Group</h4>
+                  <div style="height:250px;"><canvas id="pulseAgingChart"></canvas></div>
+              </div>
+              <div>
+                  <h4 style="font-weight:900; text-transform:uppercase; font-size:14px; margin-bottom:20px; color:#64748b;">Aging & Response Analysis by Group</h4>
+                  <div style="height:250px;"><canvas id="pulseResponseChart"></canvas></div>
+              </div>
+          </div>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:40px; margin-bottom:50px;">
@@ -476,6 +593,66 @@ export const generateReportHtml = (
                     y:{ grid:{display:false}, ticks:{font:{weight:'bold', size:10}, color:'#475569'} }
                 } 
             } 
+          });
+
+          // Pulse Charts
+          const pulseGroupCtx = document.getElementById('pulseGroupChart').getContext('2d');
+          new Chart(pulseGroupCtx, {
+              type: 'bar',
+              data: {
+                  labels: [${groupLabels}],
+                  datasets: [
+                      { label: 'Open', data: [${groupOpenData}], backgroundColor: '#3b82f6', borderRadius: 4 },
+                      { label: 'Pending/Waiting', data: [${groupPendingData}], backgroundColor: '#94a3b8', borderRadius: 4 }
+                  ]
+              },
+              options: {
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { position: 'top', labels: { font: { weight: 'bold', size: 10 } } }, datalabels: { display: false } },
+                  scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 } } }, y: { stacked: true, grid: { color: '#f1f5f9' } } }
+              }
+          });
+
+          const pulseAgingCtx = document.getElementById('pulseAgingChart').getContext('2d');
+          new Chart(pulseAgingCtx, {
+              type: 'bar',
+              data: {
+                  labels: [${groupLabels}],
+                  datasets: [
+                      { label: '< 1 Day', data: [${age1Data}], backgroundColor: '#22c55e' },
+                      { label: '1-2 Days', data: [${age2Data}], backgroundColor: '#3b82f6' },
+                      { label: '3-5 Days', data: [${age5Data}], backgroundColor: '#f59e0b' },
+                      { label: '6+ Days', data: [${agePlusData}], backgroundColor: '#ef4444' }
+                  ]
+              },
+              options: {
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { position: 'top', labels: { font: { weight: 'bold', size: 10 } } }, datalabels: { display: false } },
+                  scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 } } }, y: { stacked: true, grid: { color: '#f1f5f9' } } }
+              }
+          });
+
+          const pulseResponseCtx = document.getElementById('pulseResponseChart').getContext('2d');
+          new Chart(pulseResponseCtx, {
+              type: 'bar',
+              data: {
+                  labels: [${groupLabels}],
+                  datasets: [
+                      { label: 'Responded (< 1 Day)', data: [${resp1Data}], backgroundColor: '#22c55e', stack: 'Stack 0' },
+                      { label: 'No Response (< 1 Day)', data: [${noResp1Data}], backgroundColor: '#bbf7d0', stack: 'Stack 0' },
+                      { label: 'Responded (1-2 Days)', data: [${resp2Data}], backgroundColor: '#3b82f6', stack: 'Stack 1' },
+                      { label: 'No Response (1-2 Days)', data: [${noResp2Data}], backgroundColor: '#bfdbfe', stack: 'Stack 1' },
+                      { label: 'Responded (3-5 Days)', data: [${resp5Data}], backgroundColor: '#f59e0b', stack: 'Stack 2' },
+                      { label: 'No Response (3-5 Days)', data: [${noResp5Data}], backgroundColor: '#fde68a', stack: 'Stack 2' },
+                      { label: 'Responded (6+ Days)', data: [${respPlusData}], backgroundColor: '#ef4444', stack: 'Stack 3' },
+                      { label: 'No Response (6+ Days)', data: [${noRespPlusData}], backgroundColor: '#fecaca', stack: 'Stack 3' }
+                  ]
+              },
+              options: {
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { position: 'top', labels: { font: { weight: 'bold', size: 10 } } }, datalabels: { display: false } },
+                  scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 } } }, y: { stacked: true, grid: { color: '#f1f5f9' } } }
+              }
           });
       }
       document.addEventListener('DOMContentLoaded', initCharts);

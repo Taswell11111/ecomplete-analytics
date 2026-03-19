@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { TicketActivity } from '../../types';
+import { TicketActivity } from '../types';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
-import { ECOMPLETE_GROUPS } from '../../constants';
+import { ECOMPLETE_GROUPS } from '../constants';
 import { Activity, AlertTriangle, CheckCircle, Clock, MessageSquare, Tag } from 'lucide-react';
 
 type FreshdeskPulseProps = {
@@ -128,20 +128,20 @@ export const FreshdeskPulse: React.FC<FreshdeskPulseProps> = ({ activities, onMe
         labels: groupLabels,
         datasets: [
             { label: '< 3 Days', data: stats.sortedGroups.map(g => g[1].age1 + g[1].age2), backgroundColor: '#10B981' },
-            { label: '3-7 Days', data: stats.sortedGroups.map(g => g[1].age5), backgroundColor: '#F97316' },
-            { label: '8+ Days', data: stats.sortedGroups.map(g => g[1].agePlus), backgroundColor: '#EF4444' }
+            { label: '3-5 Days', data: stats.sortedGroups.map(g => g[1].age5), backgroundColor: '#F97316' },
+            { label: '6+ Days', data: stats.sortedGroups.map(g => g[1].agePlus), backgroundColor: '#EF4444' }
         ]
     };
 
     const agingResponseData = {
         labels: groupLabels,
         datasets: [
-            { label: 'No Response 5d+', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].no_response_plus), backgroundColor: '#7f1d1d' },
-            { label: 'No Response 2-5d', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].no_response_5), backgroundColor: '#dc2626' },
-            { label: 'No Response < 2d', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].no_response_1 + stats.responseAgingStats[g[0]].no_response_2), backgroundColor: '#f87171' },
-            { label: 'Responded 5d+', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].responded_plus), backgroundColor: '#064e3b' },
-            { label: 'Responded 2-5d', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].responded_5), backgroundColor: '#10b981' },
-            { label: 'Responded < 2d', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].responded_1 + stats.responseAgingStats[g[0]].responded_2), backgroundColor: '#4ade80' }
+            { label: 'No Response 6d+', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].no_response_plus), backgroundColor: '#7f1d1d' },
+            { label: 'No Response 3-5d', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].no_response_5), backgroundColor: '#dc2626' },
+            { label: 'No Response < 3d', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].no_response_1 + stats.responseAgingStats[g[0]].no_response_2), backgroundColor: '#f87171' },
+            { label: 'Responded 6d+', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].responded_plus), backgroundColor: '#064e3b' },
+            { label: 'Responded 3-5d', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].responded_5), backgroundColor: '#10b981' },
+            { label: 'Responded < 3d', data: stats.sortedGroups.map(g => stats.responseAgingStats[g[0]].responded_1 + stats.responseAgingStats[g[0]].responded_2), backgroundColor: '#4ade80' }
         ]
     };
 
@@ -272,7 +272,7 @@ export const FreshdeskPulse: React.FC<FreshdeskPulseProps> = ({ activities, onMe
                                         const index = elements[0].index;
                                         const groupName = brandVolumeData.labels?.[index] as string;
                                         onMetricClick(`Active Volume: ${groupName}`, (a) => {
-                                            const gName = ECOMPLETE_GROUPS.find(g => g.id === a.ticket.group_id)?.name || 'Unassigned';
+                                            const gName = a.brandName || 'Unassigned';
                                             return gName === groupName;
                                         });
                                     }
@@ -299,17 +299,16 @@ export const FreshdeskPulse: React.FC<FreshdeskPulseProps> = ({ activities, onMe
                                         const bucketLabel = ageBucketData.datasets[datasetIndex].label;
                                         
                                         onMetricClick(`Aging Analysis: ${groupName} (${bucketLabel})`, (a) => {
-                                            const gName = ECOMPLETE_GROUPS.find(g => g.id === a.ticket.group_id)?.name || 'Unassigned';
+                                            const gName = a.brandName || 'Unassigned';
                                             if (gName !== groupName) return false;
                                             const daysOld = differenceInDays(new Date(), new Date(a.ticket.created_at));
-                                            if (bucketLabel === '0-1 Days') return daysOld <= 1;
-                                            if (bucketLabel === '1-2 Days') return daysOld > 1 && daysOld <= 2;
+                                            if (bucketLabel === '< 3 Days') return daysOld <= 2;
                                             if (bucketLabel === '3-5 Days') return daysOld > 2 && daysOld <= 5;
                                             return daysOld > 5;
                                         });
                                     }
                                 },
-                                plugins: { legend: { position: 'bottom', labels: { color: '#475569', font: { weight: 'bold', size: 10 }, usePointStyle: true, padding: 20 } }, datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, formatter: (value) => value > 0 ? value : '' } as any }, 
+                                plugins: { legend: { onClick: () => {}, position: 'bottom', labels: { color: '#475569', font: { weight: 'bold', size: 10 }, usePointStyle: true, padding: 20 } }, datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, formatter: (value) => value > 0 ? value : '' } as any }, 
                                 scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b', font: { weight: 'bold', size: 10 } } }, y: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b', font: { weight: 'bold', size: 10 } } } } 
                             }} 
                         />
@@ -333,23 +332,30 @@ export const FreshdeskPulse: React.FC<FreshdeskPulseProps> = ({ activities, onMe
                                     const datasetLabel = agingResponseData.datasets[datasetIndex].label;
                                     
                                     onMetricClick(`Aging & Response: ${groupName} (${datasetLabel})`, (a) => {
-                                        const gName = ECOMPLETE_GROUPS.find(g => g.id === a.ticket.group_id)?.name || 'Unassigned';
+                                        const gName = a.brandName || 'Unassigned';
                                         if (gName !== groupName) return false;
                                         
                                         const daysOld = differenceInDays(new Date(), new Date(a.ticket.created_at));
-                                        const hasResponded = a.ticket.status !== 2;
+                                        
+                                        let isRequesterLast = true;
+                                        if (a.conversations && a.conversations.length > 0) {
+                                            const lastMsg = a.conversations[a.conversations.length - 1];
+                                            isRequesterLast = lastMsg.incoming;
+                                        } else {
+                                            isRequesterLast = a.ticket.status === 2;
+                                        }
+                                        const hasResponded = !isRequesterLast;
                                         
                                         const isResponded = datasetLabel?.includes('Responded');
                                         if (hasResponded !== isResponded) return false;
                                         
-                                        if (datasetLabel?.includes('0-1 Days')) return daysOld <= 1;
-                                        if (datasetLabel?.includes('1-2 Days')) return daysOld > 1 && daysOld <= 2;
-                                        if (datasetLabel?.includes('3-5 Days')) return daysOld > 2 && daysOld <= 5;
+                                        if (datasetLabel?.includes('< 3d')) return daysOld <= 2;
+                                        if (datasetLabel?.includes('3-5d')) return daysOld > 2 && daysOld <= 5;
                                         return daysOld > 5;
                                     });
                                 }
                             },
-                            plugins: { legend: { position: 'bottom', labels: { color: '#475569', font: { weight: 'bold', size: 9 }, usePointStyle: true, padding: 15 } }, datalabels: { color: '#fff', font: { weight: 'bold', size: 9 }, formatter: (value) => value > 0 ? value : '' } as any }, 
+                            plugins: { legend: { onClick: () => {}, position: 'bottom', labels: { color: '#475569', font: { weight: 'bold', size: 9 }, usePointStyle: true, padding: 15 } }, datalabels: { color: '#fff', font: { weight: 'bold', size: 9 }, formatter: (value) => value > 0 ? value : '' } as any }, 
                             scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b', font: { weight: 'bold', size: 10 } } }, y: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b', font: { weight: 'bold', size: 10 } } } } 
                         }} 
                     />

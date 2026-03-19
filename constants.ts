@@ -7,25 +7,25 @@ export const FALLBACK_API_KEY = '';
 export const DEFAULT_PROXY_URL = 'https://corsproxy.io/?';
 
 // ReturnGo Configuration
-export const RETURNGO_LEVIS_API_KEY = process.env.RETURNGO_LEVIS_API_KEY || "WsIPXwH9w45gaaGrl5BfZ9EeF52MlUqp79G0fIEU";
-export const RETURNGO_BOUNTY_API_KEY = process.env.RETURNGO_BOUNTY_API_KEY || "G0dxSEprxa5iOAIsK5X6g7fCDdPl09q2882osmWD";
-export const RETURNGO_STORE_URL = process.env.RETURNGO_LEVIS_STORE_URL || "levis-sa.myshopify.com";
+export const RETURNGO_LEVIS_API_KEY = "WsIPXwH9w45gaaGrl5BfZ9EeF52MlUqp79G0fIEU";
+export const RETURNGO_BOUNTY_API_KEY = "G0dxSEprxa5iOAIsK5X6g7fCDdPl09q2882osmWD";
+export const RETURNGO_LEVIS_STORE_URL = process.env.RETURNGO_LEVIS_STORE_URL || "levis-sa.myshopify.com";
 
 // Bounty Individual Store URLs and API Keys
 export const BOUNTY_DIESEL_URL = process.env.RETURNGO_DIESEL_STORE_URL || "diesel-dev-south-africa.myshopify.com";
-export const BOUNTY_DIESEL_KEY = process.env.RETURNGO_DIESEL_API_KEY || RETURNGO_BOUNTY_API_KEY;
+export const BOUNTY_DIESEL_KEY = RETURNGO_BOUNTY_API_KEY;
 
 export const BOUNTY_HURLEY_URL = process.env.RETURNGO_HURLEY_STORE_URL || "hurley-dev-south-africa.myshopify.com";
-export const BOUNTY_HURLEY_KEY = process.env.RETURNGO_HURLEY_API_KEY || RETURNGO_BOUNTY_API_KEY;
+export const BOUNTY_HURLEY_KEY = RETURNGO_BOUNTY_API_KEY;
 
 export const BOUNTY_JEEP_URL = process.env.RETURNGO_JEEP_STORE_URL || "jeep-apparel-dev-south-africa.myshopify.com";
-export const BOUNTY_JEEP_KEY = process.env.RETURNGO_JEEP_API_KEY || RETURNGO_BOUNTY_API_KEY;
+export const BOUNTY_JEEP_KEY = RETURNGO_BOUNTY_API_KEY;
 
 export const BOUNTY_REEBOK_URL = process.env.RETURNGO_REEBOK_STORE_URL || "reebok-dev-south-africa.myshopify.com";
-export const BOUNTY_REEBOK_KEY = process.env.RETURNGO_REEBOK_API_KEY || RETURNGO_BOUNTY_API_KEY;
+export const BOUNTY_REEBOK_KEY = RETURNGO_BOUNTY_API_KEY;
 
 export const BOUNTY_SUPERDRY_URL = process.env.RETURNGO_SUPERDRY_STORE_URL || "superdry-dev-south-africa.myshopify.com";
-export const BOUNTY_SUPERDRY_KEY = process.env.RETURNGO_SUPERDRY_API_KEY || RETURNGO_BOUNTY_API_KEY;
+export const BOUNTY_SUPERDRY_KEY = RETURNGO_BOUNTY_API_KEY;
 
 export const BOUNTY_STORES_CONFIG = [
   { name: 'Diesel', url: BOUNTY_DIESEL_URL, apiKey: BOUNTY_DIESEL_KEY },
@@ -38,7 +38,7 @@ export const BOUNTY_STORES_CONFIG = [
 export const BOUNTY_STORE_URLS = BOUNTY_STORES_CONFIG.map(s => s.url);
 
 // Freshdesk Configuration
-export const FRESHDESK_API_KEY = process.env.FRESHDESK_API_KEY || "";
+export const FRESHDESK_API_KEY = process.env.FRESHDESK_API_KEY || "ZpmwR0SRdLvfXDiIqaf2";
 
 // Group IDs for consolidation
 export const BOUNTY_APPAREL_GROUP_IDS = [

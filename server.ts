@@ -8,7 +8,7 @@ import multer from 'multer';
 import cors from "cors";
 import helmet from "helmet";
 import nodemailer from 'nodemailer';
-import { FRESHDESK_DOMAIN, DEFAULT_PROXY_URL, ACTIVE_TICKET_STATUSES, CONSOLIDATED_GROUP_ID, BOUNTY_APPAREL_GROUP_IDS, MASTER_GROUP_ID, REAL_GROUP_IDS, RETURNGO_STORE_URL, BOUNTY_STORE_URLS, BOUNTY_STORES_CONFIG, FRESHDESK_API_KEY, RETURNGO_LEVIS_API_KEY, RETURNGO_BOUNTY_API_KEY } from './constants.js';
+import { FRESHDESK_DOMAIN, DEFAULT_PROXY_URL, ACTIVE_TICKET_STATUSES, CONSOLIDATED_GROUP_ID, BOUNTY_APPAREL_GROUP_IDS, MASTER_GROUP_ID, REAL_GROUP_IDS, RETURNGO_LEVIS_STORE_URL, BOUNTY_STORE_URLS, BOUNTY_STORES_CONFIG, FRESHDESK_API_KEY, RETURNGO_LEVIS_API_KEY, RETURNGO_BOUNTY_API_KEY } from './constants.js';
 import { format } from 'date-fns';
 import axios from 'axios';
 
@@ -17,7 +17,7 @@ async function callFreshdeskApi(path: string, apiKey: string, connectionMode: st
   const url = `https://${FRESHDESK_DOMAIN}${path}`;
 
   const headers: Record<string, string> = {
-    'Authorization': `Basic ${Buffer.from(`${apiKey}:X`).toString('base64')}`,
+    'Authorization': `Basic ${Buffer.from(`${apiKey}:x`).toString('base64')}`,
     'Content-Type': 'application/json',
   };
 
@@ -126,9 +126,12 @@ async function startServer() {
   });
 
   // Import and use shipments router
-  import('./server/routes/shipments.js').then((shipmentsRouter) => {
+  try {
+    const shipmentsRouter = await import('./server/routes/shipments.js');
     app.use('/api', shipmentsRouter.default);
-  }).catch(err => console.error('Failed to load shipments router:', err));
+  } catch (err) {
+    console.error('Failed to load shipments router:', err);
+  }
 
   // Multer setup for file uploads
   const upload = multer({ storage: multer.memoryStorage() });
@@ -159,7 +162,7 @@ async function startServer() {
       try {
           const [exists] = await bucket.exists();
           if (!exists) {
-              const region = process.env.GOOGLE_CLOUD_REGION || 'us-west1';
+              const region = process.env.GOOGLE_CLOUD_REGION || 'europe-west2';
               console.log(`Bucket ${bucketName} does not exist. Attempting to create in ${region}...`);
               await bucket.create({ location: region.toUpperCase() }); 
               console.log(`Bucket ${bucketName} created successfully in ${region}.`);
@@ -222,8 +225,9 @@ async function startServer() {
 
     const headers: Record<string, string> = {
       "Accept": "application/json",
-      "x-api-key": apiKey,
+      "X-API-KEY": apiKey,
       "x-shop-name": shopName,
+      "User-Agent": "ExecutiveReportingDashboard/1.0"
     };
 
     if (body) {
@@ -243,7 +247,12 @@ async function startServer() {
       
       if (response.status >= 400) {
         const errorBody = typeof response.data === 'object' ? JSON.stringify(response.data) : response.data;
-        console.error(`[ReturnGo] API Error: ${response.status} - ${errorBody} for ${url} (shop: ${shopName}). Please check the API key for this store.`);
+        console.error(`[ReturnGo] API Error: ${response.status} - ${errorBody} for ${url} (shop: ${shopName}). API Key: ${apiKey.substring(0, 5)}...`);
+        
+        // If it's a 403, it might be due to the API key or the shop name mismatch
+        if (response.status === 403) {
+          console.error(`[ReturnGo] 403 Forbidden for ${shopName}. Please verify that the API key is authorized for this specific shop. Headers sent: ${JSON.stringify({ ...headers, "X-API-KEY": "MASKED" })}`);
+        }
         
         // If it's a 500 or 429, try to retry if we have retries left
         if ((response.status >= 500 || response.status === 429) && retries > 0) {
@@ -314,8 +323,8 @@ async function startServer() {
     const bountyStore = BOUNTY_STORES_CONFIG.find(s => s.url === shopName);
     if (bountyStore) {
       apiKey = bountyStore.apiKey;
-    } else if (shopName === RETURNGO_STORE_URL || shopName === "levis-sa.myshopify.com") {
-      apiKey = process.env.RETURNGO_LEVIS_API_KEY || RETURNGO_LEVIS_API_KEY;
+    } else if (shopName === RETURNGO_LEVIS_STORE_URL || shopName === "levis-sa.myshopify.com") {
+      apiKey = RETURNGO_LEVIS_API_KEY;
     }
 
     if (!apiKey) {
@@ -332,6 +341,46 @@ async function startServer() {
     }
   });
 
+  app.get('/api/returngo/test-rmas', async (req, res) => {
+    const results: Record<string, any> = {};
+    
+    try {
+      // Test all bounty stores
+      for (const store of BOUNTY_STORES_CONFIG) {
+        try {
+          console.log(`[ReturnGo Test] Fetching last RMA for ${store.name} (${store.url})...`);
+          const data = await callReturnGoApi('/rmas?pagesize=1&sort_by=-rma_created_at', store.apiKey, store.url);
+          const lastRma = data.rmas?.[0] || null;
+          
+          if (lastRma) {
+            const updatedAt = new Date(lastRma.rma_updated_at);
+            const daysSinceUpdate = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+            
+            results[store.name] = {
+              success: true,
+              rmaId: lastRma.rma_id,
+              orderName: lastRma.order_name,
+              createdAt: lastRma.rma_created_at,
+              updatedAt: lastRma.rma_updated_at,
+              daysSinceUpdate
+            };
+            console.log(`[ReturnGo Test] Found last RMA for ${store.name}: ${lastRma.rma_id}`);
+          } else {
+            results[store.name] = { success: true, rmaId: null, message: 'No RMAs found' };
+            console.log(`[ReturnGo Test] No RMAs found for ${store.name}`);
+          }
+        } catch (err: any) {
+          console.error(`[ReturnGo Test] Failed for ${store.name}: ${err.message}`);
+          results[store.name] = { success: false, error: err.message };
+        }
+      }
+      
+      res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/returngo/rmas', async (req, res) => {
     const shopName = (req.query.shopName as string || "").trim();
     const { status, pagesize, updatedAfter, breakdown } = req.query;
@@ -340,8 +389,8 @@ async function startServer() {
     const bountyStore = BOUNTY_STORES_CONFIG.find(s => s.url === shopName);
     if (bountyStore) {
       apiKey = bountyStore.apiKey;
-    } else if (shopName === RETURNGO_STORE_URL) {
-      apiKey = process.env.RETURNGO_LEVIS_API_KEY || RETURNGO_LEVIS_API_KEY;
+    } else if (shopName === RETURNGO_LEVIS_STORE_URL) {
+      apiKey = RETURNGO_LEVIS_API_KEY;
     }
 
     if (!apiKey) {
@@ -372,8 +421,8 @@ async function startServer() {
     const bountyStore = BOUNTY_STORES_CONFIG.find(s => s.url === shopName);
     if (bountyStore) {
       apiKey = bountyStore.apiKey;
-    } else if (shopName === RETURNGO_STORE_URL) {
-      apiKey = process.env.RETURNGO_LEVIS_API_KEY || RETURNGO_LEVIS_API_KEY;
+    } else if (shopName === RETURNGO_LEVIS_STORE_URL) {
+      apiKey = RETURNGO_LEVIS_API_KEY;
     }
 
     if (!apiKey) {
@@ -414,7 +463,9 @@ async function startServer() {
     }
 
     try {
-      const encodedQuery = encodeURIComponent(typeof query === 'string' ? query : '');
+      const queryString = typeof query === 'string' ? query : '';
+      const finalQuery = queryString.startsWith('"') && queryString.endsWith('"') ? queryString : `"${queryString}"`;
+      const encodedQuery = encodeURIComponent(finalQuery);
       const data: FreshdeskSearchResponse = await callFreshdeskApi(`/api/v2/search/tickets?query=${encodedQuery}&page=${page}`, apiKey, connectionMode as string);
       res.json(data);
     } catch (error: any) {
@@ -507,17 +558,14 @@ async function startServer() {
 
       const now = new Date();
       const todayStr = format(now, 'yyyy-MM-dd');
-      const timeStr = format(now, 'HH:mm:ss');
       
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
-      const yesterdayAtSameTimeStr = `${yesterdayStr} ${timeStr}`;
       
       const sevenDaysAgo = new Date(now);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
-      const sevenDaysAgoAtSameTimeStr = `${sevenDaysAgoStr} ${timeStr}`;
       
       const sixDaysAgo = new Date(now);
       sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
@@ -533,20 +581,20 @@ async function startServer() {
       const activeStatusString = ACTIVE_TICKET_STATUSES.map(s => `status:${s}`).join(' OR ');
       
       const activeQuery = `${groupQuery} AND (${activeStatusString})`;
-      const createdTodayQuery = `${groupQuery} AND created_at:>'${todayStr}'`;
-      const createdYesterdayQuery = `${groupQuery} AND created_at:>'${yesterdayStr}' AND created_at:<'${yesterdayAtSameTimeStr}'`;
-      const created7DaysQuery = `${groupQuery} AND created_at:>'${sevenDaysAgoStr}' AND created_at:<'${sevenDaysAgoAtSameTimeStr}'`;
+      const createdTodayQuery = `${groupQuery} AND created_at:'${todayStr}'`;
+      const createdYesterdayQuery = `${groupQuery} AND created_at:'${yesterdayStr}'`;
+      const created7DaysQuery = `${groupQuery} AND created_at:'${sevenDaysAgoStr}'`;
       const createdLast7DaysQuery = `${groupQuery} AND created_at:>'${sevenDaysAgoStr}'`;
       
-      const reopenedTodayQuery = `${groupQuery} AND status:9 AND updated_at:>'${todayStr}'`;
-      const reopenedYesterdayQuery = `${groupQuery} AND status:9 AND updated_at:>'${yesterdayStr}' AND updated_at:<'${yesterdayAtSameTimeStr}'`;
-      const reopened7DaysQuery = `${groupQuery} AND status:9 AND updated_at:>'${sevenDaysAgoStr}' AND updated_at:<'${sevenDaysAgoAtSameTimeStr}'`;
-      const closedTodayQuery = `${groupQuery} AND (status:4 OR status:5) AND updated_at:>'${todayStr}'`;
-      const closedYesterdayQuery = `${groupQuery} AND (status:4 OR status:5) AND updated_at:>'${yesterdayStr}' AND updated_at:<'${yesterdayAtSameTimeStr}'`;
-      const closed7DaysQuery = `${groupQuery} AND (status:4 OR status:5) AND updated_at:>'${sevenDaysAgoStr}' AND updated_at:<'${sevenDaysAgoAtSameTimeStr}'`;
-      const workedTodayQuery = `${groupQuery} AND updated_at:>'${todayStr}'`;
-      const workedYesterdayQuery = `${groupQuery} AND updated_at:>'${yesterdayStr}' AND updated_at:<'${yesterdayAtSameTimeStr}'`;
-      const worked7DaysQuery = `${groupQuery} AND updated_at:>'${sevenDaysAgoStr}' AND updated_at:<'${sevenDaysAgoAtSameTimeStr}'`;
+      const reopenedTodayQuery = `${groupQuery} AND status:9 AND updated_at:'${todayStr}'`;
+      const reopenedYesterdayQuery = `${groupQuery} AND status:9 AND updated_at:'${yesterdayStr}'`;
+      const reopened7DaysQuery = `${groupQuery} AND status:9 AND updated_at:'${sevenDaysAgoStr}'`;
+      const closedTodayQuery = `${groupQuery} AND (status:4 OR status:5) AND updated_at:'${todayStr}'`;
+      const closedYesterdayQuery = `${groupQuery} AND (status:4 OR status:5) AND updated_at:'${yesterdayStr}'`;
+      const closed7DaysQuery = `${groupQuery} AND (status:4 OR status:5) AND updated_at:'${sevenDaysAgoStr}'`;
+      const workedTodayQuery = `${groupQuery} AND updated_at:'${todayStr}'`;
+      const workedYesterdayQuery = `${groupQuery} AND updated_at:'${yesterdayStr}'`;
+      const worked7DaysQuery = `${groupQuery} AND updated_at:'${sevenDaysAgoStr}'`;
 
       const queries = [
           activeQuery, createdTodayQuery, createdYesterdayQuery, created7DaysQuery,

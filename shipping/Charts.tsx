@@ -25,22 +25,24 @@ export const OutboundStatusChart: React.FC<{ data: any[] }> = ({ data }) => {
   const chartData = Array.from(storeMap.values());
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
+    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80 flex flex-col">
       <h3 className="text-sm font-semibold text-slate-700 mb-4">Shipments by Status per Store</h3>
-      <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100} debounce={50}>
-        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" tick={{fontSize: 12}} />
-          <YAxis tick={{fontSize: 12}} />
-          <Tooltip wrapperStyle={{ fontSize: '12px' }} />
-          <Legend wrapperStyle={{ fontSize: '12px' }} />
-          <Bar dataKey="Delivered" stackId="a" fill="#10b981" />
-          <Bar dataKey="Dispatched" stackId="a" fill="#3b82f6" />
-          <Bar dataKey="Processing" stackId="a" fill="#f59e0b" />
-          <Bar dataKey="Cancelled" stackId="a" fill="#ef4444" />
-          <Bar dataKey="Returned" stackId="a" fill="#f97316" />
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="flex-1 w-full min-h-0">
+        <ResponsiveContainer width="100%" height="100%" debounce={50}>
+          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="name" tick={{fontSize: 12}} />
+            <YAxis tick={{fontSize: 12}} />
+            <Tooltip wrapperStyle={{ fontSize: '12px' }} />
+            <Legend wrapperStyle={{ fontSize: '12px' }} />
+            <Bar dataKey="Delivered" stackId="a" fill="#10b981" />
+            <Bar dataKey="Dispatched" stackId="a" fill="#3b82f6" />
+            <Bar dataKey="Processing" stackId="a" fill="#f59e0b" />
+            <Bar dataKey="Cancelled" stackId="a" fill="#ef4444" />
+            <Bar dataKey="Returned" stackId="a" fill="#f97316" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };
@@ -60,17 +62,19 @@ export const OutboundVolumeChart: React.FC<{ data: any[] }> = ({ data }) => {
   const chartData = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
+    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80 flex flex-col">
       <h3 className="text-sm font-semibold text-slate-700 mb-4">Daily Shipment Volume</h3>
-      <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100} debounce={50}>
-        <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="date" tick={{fontSize: 12}} />
-          <YAxis tick={{fontSize: 12}} />
-          <Tooltip wrapperStyle={{ fontSize: '12px' }} />
-          <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-        </LineChart>
-      </ResponsiveContainer>
+      <div className="flex-1 w-full min-h-0">
+        <ResponsiveContainer width="100%" height="100%" debounce={50}>
+          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="date" tick={{fontSize: 12}} />
+            <YAxis tick={{fontSize: 12}} />
+            <Tooltip wrapperStyle={{ fontSize: '12px' }} />
+            <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };
@@ -97,22 +101,24 @@ export const InboundStatusChart: React.FC<{ data: any[] }> = ({ data }) => {
   const chartData = Array.from(storeMap.values());
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
+    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80 flex flex-col">
       <h3 className="text-sm font-semibold text-slate-700 mb-4">Inbounds by Status per Store</h3>
-      <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100} debounce={50}>
-        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" tick={{fontSize: 12}} />
-          <YAxis tick={{fontSize: 12}} />
-          <Tooltip wrapperStyle={{ fontSize: '12px' }} />
-          <Legend wrapperStyle={{ fontSize: '12px' }} />
-          <Bar dataKey="Awaiting" stackId="a" fill="#64748b" />
-          <Bar dataKey="Arrived" stackId="a" fill="#6366f1" />
-          <Bar dataKey="Processing" stackId="a" fill="#f59e0b" />
-          <Bar dataKey="Available" stackId="a" fill="#10b981" />
-          <Bar dataKey="Variance" stackId="a" fill="#f59e0b" />
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="flex-1 w-full min-h-0">
+        <ResponsiveContainer width="100%" height="100%" debounce={50}>
+          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="name" tick={{fontSize: 12}} />
+            <YAxis tick={{fontSize: 12}} />
+            <Tooltip wrapperStyle={{ fontSize: '12px' }} />
+            <Legend wrapperStyle={{ fontSize: '12px' }} />
+            <Bar dataKey="Awaiting" stackId="a" fill="#64748b" />
+            <Bar dataKey="Arrived" stackId="a" fill="#6366f1" />
+            <Bar dataKey="Processing" stackId="a" fill="#f59e0b" />
+            <Bar dataKey="Available" stackId="a" fill="#10b981" />
+            <Bar dataKey="Variance" stackId="a" fill="#f59e0b" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

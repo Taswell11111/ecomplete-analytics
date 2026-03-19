@@ -21,7 +21,7 @@ import { TicketDetailModal } from '../components/TicketDetailModal';
 import { MetricDetailModal } from '../components/MetricDetailModal';
 import { LinkResultModal } from '../components/LinkResultModal';
 import { LiveVoiceConsole } from '../components/LiveVoiceConsole';
-import { FreshdeskPulse } from '../components/FreshdeskPulse';
+import { FreshdeskPulse } from '../FreshdeskPulse';
 
 import Chart from 'chart.js/auto';
 // @ts-ignore
@@ -145,12 +145,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [hiddenDatasets, setHiddenDatasets] = useState<number[]>([]);
 
   // Audio Highlighting Logic
-  useEffect(() => {
-    if (isAnalysisComplete && executiveSummary && audioBase64 && !isPlayingAudio && !isGeneratingAudio) {
-        onPlayAudio(audioBase64);
-    }
-  }, [isAnalysisComplete, executiveSummary, audioBase64]);
-
   useEffect(() => {
     if (!isPlayingAudio || !audioRef.current) {
         setHighlightedSection(null);
@@ -312,10 +306,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     const cat = a.analysis?.category || "Other";
                     categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
                 });
-                if (scaleFactor > 1.05) {
-                    Object.keys(urgencyCounts).forEach(key => { urgencyCounts[key] = Math.round(urgencyCounts[key] * scaleFactor); });
-                    Object.keys(categoryCounts).forEach(key => { categoryCounts[key] = Math.round(categoryCounts[key] * scaleFactor); });
-                }
                 
                 if (pieChartRef.current) {
                     if (pieChartInstance.current) pieChartInstance.current.destroy();
@@ -349,7 +339,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                     return acc;
                                                 }, {});
                                             const breakdownLines = Object.entries(brandBreakdown)
-                                                .map(([brand, bCount]) => `  ${brand}: ${Math.round((bCount as number) * scaleFactor)}`);
+                                                .map(([brand, bCount]) => `  ${brand}: ${bCount}`);
                                             return [`Total: ${count}`, `Breakdown:`, ...breakdownLines];
                                         }
                                     }
@@ -400,7 +390,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                     return acc;
                                                 }, {});
                                             const breakdownLines = Object.entries(brandBreakdown)
-                                                .map(([brand, bCount]) => `  ${brand}: ${Math.round((bCount as number) * scaleFactor)}`);
+                                                .map(([brand, bCount]) => `  ${brand}: ${bCount}`);
                                             return [`Total: ${count}`, `Breakdown:`, ...breakdownLines];
                                         }
                                     }
@@ -434,12 +424,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             if (agingChartRef.current) {
                 let labels: string[]; let data: number[]; let subtitle: string;
                 const today = startOfDay(new Date());
-                const oldestDate = activities.length > 0 
-                    ? startOfDay(new Date(activities.reduce((oldest, curr) => {
+                const sourceData = actualBacklogData ? pulseActivities : activities;
+                const oldestDate = sourceData.length > 0 
+                    ? startOfDay(new Date(sourceData.reduce((oldest, curr) => {
                         const currDate = new Date(curr.ticket.created_at);
                         const oldestDate = new Date(oldest.ticket.created_at);
                         return currDate < oldestDate ? curr : oldest;
-                      }, activities[0]).ticket.created_at))
+                      }, sourceData[0]).ticket.created_at))
                     : today;
                 
                 const diffDays = differenceInDays(today, oldestDate) + 1;
@@ -559,39 +550,57 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 const brandColors = brands.map((_, i) => getGroupColor(i));
                 
                 if (!hiddenDatasets.includes(0)) {
-                    brands.forEach((brand, idx) => {
-                        const data = hours.map(hour => {
-                            let volume = 0;
-                            activities.forEach(a => {
-                                const aBrand = (a.brandName || 'Unknown').replace(' Online South Africa', '');
-                                if (aBrand === brand) {
-                                    let date: Date | null = null;
-                                    if (timelineTab === 'created') {
-                                        date = new Date(a.ticket.created_at);
-                                    } else if (timelineTab === 'closed') {
-                                        if (a.ticket.status === 4 || a.ticket.status === 5) date = new Date(a.ticket.updated_at);
-                                    } else {
-                                        date = new Date(a.ticket.updated_at);
-                                    }
-                                    if (date && isSameHour(date, hour) && isSameDay(date, hour)) {
-                                        volume++;
-                                    }
+                    const todayData = hours.map((hour, i) => {
+                        let sampleVolume = 0;
+                        const brandBreakdown: Record<string, number> = {};
+                        brands.forEach(b => brandBreakdown[b] = 0);
+
+                        activities.forEach(a => {
+                            const aBrand = (a.brandName || 'Unknown').replace(' Online South Africa', '');
+                            if (brands.includes(aBrand)) {
+                                let date: Date | null = null;
+                                if (timelineTab === 'created') {
+                                    date = new Date(a.ticket.created_at);
+                                } else if (timelineTab === 'closed') {
+                                    if (a.ticket.status === 4 || a.ticket.status === 5) date = new Date(a.ticket.updated_at);
+                                } else {
+                                    date = new Date(a.ticket.updated_at);
                                 }
-                            });
-                            return Math.round(volume * scaleFactor);
+                                if (date && isSameHour(date, hour) && isSameDay(date, hour)) {
+                                    sampleVolume++;
+                                    brandBreakdown[aBrand]++;
+                                }
+                            }
                         });
                         
-                        datasets.push({
-                            label: brand,
-                            data: data,
-                            borderColor: brandColors[idx],
-                            backgroundColor: `${brandColors[idx]}33`,
-                            borderWidth: 3,
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 4,
-                            hidden: false
-                        });
+                        const actualTotal = timelineTab === 'created' ? displayMetrics.ticketsByHour[i] :
+                                            timelineTab === 'closed' ? displayMetrics.closedTicketsByHour[i] :
+                                            displayMetrics.workedTicketsByHour[i];
+                                            
+                        const scaledBreakdown: Record<string, number> = {};
+                        if (sampleVolume > 0) {
+                            Object.entries(brandBreakdown).forEach(([brand, count]) => {
+                                scaledBreakdown[brand] = Math.round((count / sampleVolume) * (actualTotal || 0));
+                            });
+                        }
+
+                        return {
+                            y: actualTotal || 0,
+                            breakdown: scaledBreakdown
+                        };
+                    });
+                    
+                    datasets.push({
+                        label: 'Today',
+                        data: todayData.map(d => d.y),
+                        borderColor: '#3b82f6',
+                        backgroundColor: '#3b82f633',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        hidden: false,
+                        breakdownData: todayData.map(d => d.breakdown)
                     });
                 }
 
@@ -659,7 +668,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 mode: 'index',
                                 intersect: false,
                                 callbacks: {
-                                    label: (ctx: any) => `${ctx.dataset.label}: ${ctx.raw}`
+                                    label: (ctx: any) => {
+                                        if (ctx.dataset.label === 'Today' && ctx.dataset.breakdownData) {
+                                            const breakdown = ctx.dataset.breakdownData[ctx.dataIndex];
+                                            const lines = [`Today: ${ctx.raw}`];
+                                            Object.entries(breakdown).forEach(([brand, count]) => {
+                                                if ((count as number) > 0) {
+                                                    lines.push(`  ${brand}: ${count}`);
+                                                }
+                                            });
+                                            return lines;
+                                        }
+                                        return `${ctx.dataset.label}: ${ctx.raw}`;
+                                    }
                                 }
                             }
                         } as any, 
@@ -777,6 +798,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         const m = await getDashboardMetrics(selectedGroup.id, config);
         setMetrics(m);
         
+        let localGroupCounts: {id: number, name: string, count: number}[] = [];
         if (selectedGroup.id === CONSOLIDATED_GROUP_ID) {
             const counts = [];
             for (const id of BOUNTY_APPAREL_GROUP_IDS) {
@@ -784,6 +806,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 counts.push({ id, name: ECOMPLETE_GROUPS.find(g => g.id === id)?.name || 'Unknown', count: gm.activeTickets });
                 await delay(200); // Small delay between groups
             }
+            localGroupCounts = counts;
             setGroupActiveCounts(counts);
         } else if (selectedGroup.id === MASTER_GROUP_ID) {
             const counts = [];
@@ -792,6 +815,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 counts.push({ id, name: ECOMPLETE_GROUPS.find(g => g.id === id)?.name || 'Unknown', count: gm.activeTickets });
                 await delay(200); // Small delay between groups
             }
+            localGroupCounts = counts;
             setGroupActiveCounts(counts);
         }
         
@@ -815,9 +839,53 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             const results = [];
             for (const groupId of BOUNTY_APPAREL_GROUP_IDS) {
                 const groupName = ECOMPLETE_GROUPS.find(g => g.id === groupId)?.name || 'Unknown Brand';
+                const groupActiveCount = localGroupCounts.find(g => g.id === groupId)?.count || 0;
+                let groupCount = ticketScope === 'all' ? groupActiveCount : Math.ceil(groupActiveCount * (parseInt(ticketScope)/100));
+                groupCount = Math.min(groupCount, 60); // Cap per group
+                
                 const groupQuery = `group_id:${groupId} AND (${activeStatusString})`;
                 let allTickets: Ticket[] = []; let page = 1; let fetching = true;
-                const groupCount = Math.ceil(count / BOUNTY_APPAREL_GROUP_IDS.length);
+                while (fetching && allTickets.length < groupCount) { 
+                    if (signal.aborted) throw new Error("Cancelled"); 
+                    const resp = await getTickets(groupQuery, config, page); 
+                    if (resp.results && resp.results.length > 0) { 
+                        allTickets = [...allTickets, ...resp.results]; 
+                        if (resp.results.length < 30 || allTickets.length >= groupCount) {
+                            fetching = false;
+                        } else {
+                            page++;
+                        }
+                    } else { 
+                        fetching = false; 
+                    } 
+                    if (page > 10) fetching = false; 
+                }
+                let tickets = allTickets.slice(0, groupCount);
+                const groupProcessed: TicketActivity[] = [];
+                for(let i=0; i < tickets.length; i++) { 
+                    if (signal.aborted) throw new Error("Cancelled"); 
+                    const t = tickets[i]; 
+                    if (i > 0) await delay(450);
+                    const convs = await getConversations(t.id, config); 
+                    const ana = await analyseAndSummariseTicket(t, convs); 
+                    let reqName = 'Customer'; 
+                    try { const rs = await getRequesters([t.requester_id], config); if(rs.length) reqName = rs[0].name; } catch(e){} 
+                    groupProcessed.push({ ticket: t, conversations: convs, aiSummary: ana.summary, timeSpent: ana.timeSpentMinutes, analysis: { urgency: ana.urgency as any, category: ana.category as any }, requesterName: reqName, lastResponseDate: convs.length ? convs[convs.length-1].created_at : null, statusSince: t.updated_at, statusName: TICKET_STATUS_MAP[t.status] || 'Unknown', periodInStatus: formatDistanceToNow(new Date(t.updated_at)), sentimentScore: ana.sentimentScore, riskScore: ana.riskScore, brandName: groupName }); 
+                }
+                results.push(groupProcessed);
+            }
+            processed = results.flat();
+        } else if (selectedGroup.id === MASTER_GROUP_ID) {
+            updateProgress(`Syncing and Analysing All Brands...`);
+            const results = [];
+            for (const groupId of REAL_GROUP_IDS) {
+                const groupName = ECOMPLETE_GROUPS.find(g => g.id === groupId)?.name || 'Unknown Brand';
+                const groupActiveCount = localGroupCounts.find(g => g.id === groupId)?.count || 0;
+                let groupCount = ticketScope === 'all' ? groupActiveCount : Math.ceil(groupActiveCount * (parseInt(ticketScope)/100));
+                groupCount = Math.min(groupCount, 60); // Cap per group
+                
+                const groupQuery = `group_id:${groupId} AND (${activeStatusString})`;
+                let allTickets: Ticket[] = []; let page = 1; let fetching = true;
                 while (fetching && allTickets.length < groupCount) { 
                     if (signal.aborted) throw new Error("Cancelled"); 
                     const resp = await getTickets(groupQuery, config, page); 
@@ -936,6 +1004,33 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 const dailyCounts: Record<string, number> = {}; dateKeys.forEach(k => dailyCounts[k] = 0); 
                 let priorCount = 0;
                 allActiveTicketsFetched.forEach(t => { const created = startOfDay(new Date(t.created_at)); if (isBefore(created, startDate)) priorCount++; else { const k = format(created, 'MMM dd'); if (dailyCounts[k] !== undefined) dailyCounts[k]++; } });
+                
+                const scaleFactor = (m.activeTickets > allActiveTicketsFetched.length) ? m.activeTickets / allActiveTicketsFetched.length : 1;
+                let totalScaled = 0;
+                if (scaleFactor > 1.05) {
+                    Object.keys(dailyCounts).forEach(k => { 
+                        dailyCounts[k] = Math.round(dailyCounts[k] * scaleFactor); 
+                        totalScaled += dailyCounts[k];
+                    });
+                    priorCount = Math.round(priorCount * scaleFactor);
+                    totalScaled += priorCount;
+                    
+                    // Adjust the largest bucket to make the sum exactly m.activeTickets
+                    const diff = m.activeTickets - totalScaled;
+                    if (diff !== 0) {
+                        let maxKey = Object.keys(dailyCounts)[0];
+                        let maxVal = dailyCounts[maxKey];
+                        Object.keys(dailyCounts).forEach(k => {
+                            if (dailyCounts[k] > maxVal) { maxVal = dailyCounts[k]; maxKey = k; }
+                        });
+                        if (priorCount > maxVal) {
+                            priorCount += diff;
+                        } else {
+                            dailyCounts[maxKey] += diff;
+                        }
+                    }
+                }
+
                 const finalLabels = priorCount > 0 ? ["Prior (>45d)", ...dateKeys] : dateKeys;
                 const finalData = priorCount > 0 ? [priorCount, ...dateKeys.map(k => dailyCounts[k])] : dateKeys.map(k => dailyCounts[k]);
                 setActualBacklogData({ labels: finalLabels, data: finalData });
@@ -1075,10 +1170,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       let query = '';
       switch(type) { 
-          case 'Created': query = `${groupQuery} AND created_at:>'${todayStr}'`; break; 
-          case 'Worked': query = `${groupQuery} AND updated_at:>'${todayStr}'`; break; 
-          case 'Closed': query = `${groupQuery} AND (status:4 OR status:5) AND updated_at:>'${todayStr}'`; break; 
-          case 'Reopened': query = `${groupQuery} AND status:9 AND updated_at:>'${todayStr}'`; break; 
+          case 'Created': query = `${groupQuery} AND created_at:'${todayStr}'`; break; 
+          case 'Worked': query = `${groupQuery} AND updated_at:'${todayStr}'`; break; 
+          case 'Closed': query = `${groupQuery} AND (status:4 OR status:5) AND updated_at:'${todayStr}'`; break; 
+          case 'Reopened': query = `${groupQuery} AND status:9 AND updated_at:'${todayStr}'`; break; 
           default: return; 
       } 
 
@@ -1120,8 +1215,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   };
 
   const getUrgencyCountScaled = (urgency: string) => { 
-      let count = 0; activities.forEach(a => { if (a.analysis.urgency === urgency) count++; }); 
-      if (activities.length > 0 && displayMetrics && displayMetrics.activeTickets > activities.length) return Math.round(count * (displayMetrics.activeTickets / activities.length));
+      let count = 0; activities.forEach(a => { if (a.analysis.urgency.toUpperCase() === urgency.toUpperCase()) count++; }); 
       return count; 
   };
 
@@ -1147,8 +1241,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div className="shrink-0 mr-4 lg:mr-12">
                   <h1 className="text-lg lg:text-2xl font-black text-white tracking-tighter uppercase flex items-center gap-2 lg:gap-3">
                       <BarChart3 className="text-ecomplete-accent shrink-0" size={20} />
-                      <span className="truncate">Support Insight</span>
-                      <span className="hidden sm:inline text-white/60 font-medium text-sm ml-2">| {selectedGroup.name}</span>
+                      <span className="truncate">Support Intelligence</span>
+                      <span className="hidden sm:inline text-ecomplete-accent font-black text-2xl ml-4">| {appContext === 'levis' ? "LEVI'S ONLINE" : "BOUNTY APPAREL"}</span>
+                      <span className="hidden sm:inline text-white/40 font-bold text-xs ml-4 uppercase tracking-widest mt-1">Session Initialised: {new Date().toLocaleString()}</span>
                   </h1>
               </div>
           </div>
@@ -1176,7 +1271,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <button onClick={handleFetchActivity} disabled={isLoading} className={`bg-ecomplete-accent text-slate-900 px-6 lg:px-12 h-full font-black flex flex-col items-center justify-center gap-1 lg:gap-2 shadow-[inset_-4px_0_10px_rgba(255,255,255,0.3),0_0_40px_-5px_#FFEB00] uppercase tracking-[0.2em] hover:bg-yellow-400 transition-all text-[9px] lg:text-[11px] shrink-0 rounded-none border-x border-yellow-500 relative group ${isGeneratingAudio || isPlayingAudio ? 'animate-pulse ring-4 ring-white/50' : ''}`}>
                   <div className="absolute top-0 left-0 w-2 h-full bg-white opacity-50 group-hover:opacity-100 transition-opacity shadow-[0_0_15px_#ffffff]"></div>
                   {isLoading ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} className="group-hover:rotate-180 transition-transform duration-700" />} 
-                  <span className="text-center whitespace-nowrap uppercase tracking-widest leading-tight">Sync<br/>Intel</span>
+                  <span className="text-center whitespace-nowrap uppercase tracking-widest leading-tight">Fetch<br/>Intel</span>
               </button>
 
               <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden flex items-center justify-center px-6 h-full text-white hover:bg-white/10 transition-colors">
@@ -1257,7 +1352,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="max-w-[1600px] mx-auto w-full px-8">
                       <div className="text-center mb-20 space-y-6">
                           <div className="inline-flex items-center gap-3 bg-slate-900 text-white px-6 py-2 rounded-full text-[10px] font-black tracking-[0.4em] uppercase shadow-2xl">
-                              Freshdesk Support Insight Guide
+                              Freshdesk Support Intelligence Guide
                           </div>
                           <h2 className="text-5xl lg:text-7xl font-black text-slate-900 tracking-tighter leading-none uppercase">
                               The <span className="text-ecomplete-primary">Support</span> <br/>
@@ -1339,15 +1434,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-ecomplete-accent/10 rounded-full blur-[150px] animate-float-delayed"></div>
                   </div>
                   <div className={`space-y-8 lg:space-y-12 animate-[fade-in_7s_ease-out_forwards] relative z-20`}>
-                      <div className="bg-ecomplete-primary text-white p-6 lg:p-8 rounded-[2rem] mb-8 shadow-lg">
-                      <h2 className="text-xl lg:text-2xl font-black uppercase tracking-widest">Unified Support Ecosystem Intelligence</h2>
-                      <p className="text-[10px] lg:text-sm font-bold opacity-80 uppercase tracking-widest mt-2">Session Initialised: {new Date().toLocaleString()}</p>
-                      {appContext !== 'admin' && (
-                          <h3 className="text-lg lg:text-xl font-black mt-2 uppercase tracking-widest">
-                            {appContext === 'levis' ? "LEVI'S ONLINE" : "BOUNTY APPAREL"}
-                          </h3>
-                      )}
-                  </div>
                   <div className="bg-white rounded-[2.5rem] lg:rounded-[3.5rem] p-6 lg:p-10 shadow-[0_30px_70px_rgba(0,0,0,0.05)] border border-slate-200 relative overflow-hidden group">
                           <div className="absolute top-4 right-4 lg:top-6 lg:right-6 flex flex-col gap-3 z-10">
                               <button 
@@ -1371,19 +1457,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </div>
                           <div className="absolute top-0 left-0 w-full h-4 bg-ecomplete-accent"></div>
                           
-                          <div className="flex flex-col lg:flex-row items-center justify-between w-full mt-8 lg:mt-4">
-                              <div className={`flex-1 text-left w-full ${groupActiveCounts.length > 0 ? 'lg:border-r border-slate-100 lg:pr-10' : 'text-center'}`}>
-                                  <h2 className={`text-sm lg:text-xl font-black text-slate-400 uppercase tracking-[0.4em] mb-4 group-hover:text-ecomplete-primary transition-colors ${groupActiveCounts.length > 0 ? '' : 'text-center'}`}>Total Active Ticket Queue</h2>
-                                  <div className={`text-7xl md:text-8xl lg:text-9xl leading-none font-black text-[#FFEB00] tracking-tighter group-hover:scale-105 transition-transform duration-700 drop-shadow-[0_0_15px_rgba(255,235,0,0.3)] ${groupActiveCounts.length > 0 ? '' : 'text-center'} ${highlightedSection === 'queue' ? 'ring-8 ring-ecomplete-accent ring-offset-8 rounded-3xl animate-pulse' : ''}`} style={{ WebkitTextStroke: '1px black', textShadow: '2px 2px 0px rgba(0,0,0,0.1)' }}>{displayMetrics.activeTickets}</div>
-                                  <div className={`text-slate-400 font-black uppercase tracking-[0.2em] mt-6 lg:mt-8 flex flex-col gap-2 ${groupActiveCounts.length > 0 ? 'items-start' : 'items-center justify-center'}`}> 
+                          <h2 className="text-sm lg:text-xl font-black text-slate-400 uppercase tracking-[0.4em] mt-8 mb-8 text-center group-hover:text-ecomplete-primary transition-colors w-full">Total Active Ticket Queue</h2>
+                          <div className="flex flex-col lg:flex-row items-center justify-center w-full gap-16 lg:gap-24">
+                              <div className="flex flex-col items-center text-center">
+                                  <div className={`text-7xl md:text-8xl lg:text-9xl leading-none font-black text-[#FFEB00] tracking-tighter group-hover:scale-105 transition-transform duration-700 drop-shadow-[0_0_15px_rgba(255,235,0,0.3)] ${highlightedSection === 'queue' ? 'ring-8 ring-ecomplete-accent ring-offset-8 rounded-3xl animate-pulse' : ''}`} style={{ WebkitTextStroke: '1px black', textShadow: '2px 2px 0px rgba(0,0,0,0.1)' }}>{displayMetrics.activeTickets}</div>
+                                  <div className="text-slate-400 font-black uppercase tracking-[0.2em] mt-6 lg:mt-8 flex flex-col gap-2 items-center justify-center"> 
                                       <span className="text-2xl lg:text-4xl text-slate-900 tracking-tight">{selectedGroup.name}</span> 
-                                      <span className="text-[10px] lg:text-xs text-slate-300">{format(new Date(), "EEEE dd MMM")}</span> 
+                                      <span className="text-xs lg:text-sm text-slate-500 font-black">{format(new Date(), "EEEE dd MMM")}</span> 
                                   </div>
                               </div>
                               
                               {/* Doughnut Chart Section */}
                               {groupActiveCounts.length > 0 && (
-                                  <div className="flex-1 lg:pl-10 mt-10 lg:mt-0 flex flex-col items-center justify-center w-full">
+                                  <div className="flex flex-col items-center justify-center w-full max-w-md lg:-ml-16">
                                       <div className="h-[250px] w-full relative flex justify-center">
                                           <canvas ref={doughnutChartRef}></canvas>
                                       </div>
@@ -1512,6 +1598,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </div>
                       
                       <div className="space-y-8">
+                          <div className="w-full mt-12 mb-12 animate-in fade-in">
+                              <FreshdeskPulse 
+                                  activities={pulseActivities} 
+                                  onMetricClick={(title, filterFn) => {
+                                      setMetricModalTitle(title);
+                                      setMetricModalTickets(pulseActivities.filter(filterFn));
+                                      setMetricModalOpen(true);
+                                  }}
+                              />
+                          </div>
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                               <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-lg flex flex-col hover:shadow-2xl transition-all duration-500">
                                   <h3 className="font-black text-slate-800 uppercase text-3xl tracking-tight mb-8 pb-4 border-b border-slate-50">Urgency Profile</h3>
@@ -1570,9 +1667,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       const counts: {[key: string]: number} = {}; 
                                       activities.forEach(a => counts[a.analysis.category] = (counts[a.analysis.category] || 0) + 1); 
                                       const sampleSize = activities.length; 
-                                      const scaleFactor = (sampleSize > 0 && displayMetrics) ? displayMetrics.activeTickets / sampleSize : 1; 
                                       return Object.keys(counts).sort((a,b) => counts[b] - counts[a]).slice(0, 6).map(cat => { 
-                                          const scaledCount = Math.round(counts[cat] * scaleFactor); 
+                                          const scaledCount = counts[cat]; 
                                           const perc = sampleSize > 0 ? Math.round((counts[cat] / sampleSize) * 100) : 0;
                                           return ( 
                                           <div key={cat} className={`flex items-center justify-between px-4 py-4 rounded-2xl border text-[14px] font-black transition-all duration-300 bg-slate-50 border-slate-100`} style={{ color: getCategoryColor(cat) }}> 
@@ -1584,17 +1680,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           </div> 
                                       )}); })()} </div>
                               </div>
-                          </div>
-                          
-                          <div className="w-full mt-12 mb-12 animate-in fade-in">
-                              <FreshdeskPulse 
-                                  activities={pulseActivities} 
-                                  onMetricClick={(title, filterFn) => {
-                                      setMetricModalTitle(title);
-                                      setMetricModalTickets(pulseActivities.filter(filterFn));
-                                      setMetricModalOpen(true);
-                                  }}
-                              />
                           </div>
                           
                           <div className="w-full">
