@@ -481,39 +481,56 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     : today;
                 
                 const diffDays = differenceInDays(today, oldestDate) + 1;
-                const daysToShow = Math.min(Math.max(diffDays, 1), 45);
-                const startDate = subDays(today, daysToShow - 1);
+                const daysToShow = Math.max(diffDays, 1);
+                const startDate = oldestDate;
                 
                 if (actualBacklogData) {
                     labels = actualBacklogData.labels; data = actualBacklogData.data;
-                    // Filter out zero-value points
-                    const filteredIndices = data.map((v, i) => v > 0 ? i : -1).filter(i => i !== -1);
-                    labels = filteredIndices.map(i => labels[i]);
-                    data = filteredIndices.map(i => data[i]);
-                    subtitle = `This chart displays the actual creation date of all ${displayMetrics.activeTickets} active tickets in the queue.`;
+                    // Filter out zero-value points only at the leading/trailing edges, not in the middle
+                    const firstNonZero = labels.findIndex((_, i) => data[i] > 0);
+                    const lastNonZero = labels.map((_, i) => data[i] > 0 ? i : -1).filter(i => i !== -1).pop() ?? 0;
+                    if (firstNonZero > 0) {
+                        labels = labels.slice(firstNonZero);
+                        data = data.slice(firstNonZero);
+                    }
+                    if (lastNonZero < labels.length - 1) {
+                        labels = labels.slice(0, lastNonZero - firstNonZero + 1);
+                        data = data.slice(0, lastNonZero - firstNonZero + 1);
+                    }
+                    subtitle = `Actual creation dates for all ${displayMetrics.activeTickets} active tickets in queue.`;
                 } else {
                     const interval = eachDayOfInterval({ start: startDate, end: today });
                     const dateKeys = interval.map(d => format(d, 'MMM dd'));
                     const dailyCounts: Record<string, number> = {}; dateKeys.forEach(k => dailyCounts[k] = 0);
-                    let priorCount = 0;
+                    
                     activities.forEach(a => {
                         const created = startOfDay(new Date(a.ticket.created_at));
-                        if (isBefore(created, startDate)) priorCount++;
-                        else { const k = format(created, 'MMM dd'); if (dailyCounts[k] !== undefined) dailyCounts[k]++; }
+                        const k = format(created, 'MMM dd');
+                        if (dailyCounts[k] !== undefined) dailyCounts[k]++;
                     });
-                    if (scaleFactor > 1.05) {
-                        priorCount = Math.round(priorCount * scaleFactor);
-                        Object.keys(dailyCounts).forEach(key => { dailyCounts[key] = Math.round(dailyCounts[key] * scaleFactor); });
-                    }
-                    labels = priorCount > 0 ? ["Prior (>45d)", ...dateKeys] : dateKeys; 
-                    data = priorCount > 0 ? [priorCount, ...dateKeys.map(k => dailyCounts[k])] : dateKeys.map(k => dailyCounts[k]);
                     
-                    // Filter out 0-value points
-                    const filteredIndices = data.map((v, i) => v > 0 ? i : -1).filter(i => i !== -1);
-                    labels = filteredIndices.map(i => labels[i]);
-                    data = filteredIndices.map(i => data[i]);
+                    if (scaleFactor > 1.05) {
+                        Object.keys(dailyCounts).forEach(key => {
+                            dailyCounts[key] = Math.round(dailyCounts[key] * scaleFactor);
+                        });
+                    }
+                    
+                    labels = dateKeys;
+                    data = dateKeys.map(k => dailyCounts[k]);
+                    
+                    // Filter out zero-value points only at the leading/trailing edges, not in the middle
+                    const firstNonZero = labels.findIndex((_, i) => data[i] > 0);
+                    const lastNonZero = labels.map((_, i) => data[i] > 0 ? i : -1).filter(i => i !== -1).pop() ?? 0;
+                    if (firstNonZero > 0) {
+                        labels = labels.slice(firstNonZero);
+                        data = data.slice(firstNonZero);
+                    }
+                    if (lastNonZero < labels.length - 1) {
+                        labels = labels.slice(0, lastNonZero - firstNonZero + 1);
+                        data = data.slice(0, lastNonZero - firstNonZero + 1);
+                    }
 
-                    subtitle = `Projected from a sample of ${activities.length} tickets across the total queue of ${displayMetrics.activeTickets}.`;
+                    subtitle = `Projected from a sample of ${activities.length} tickets across a total queue of ${displayMetrics.activeTickets}.`;
                     if (isFetchingBacklog) subtitle += ` A fully accurate analysis is loading now...`;
                 }
                 setBacklogChartSubtitle(subtitle);
@@ -543,11 +560,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 const index = elements[0].index; 
                                 const label = labels[index]; 
                                 let filtered: TicketActivity[] = []; 
-                                if (label.includes('Prior')) { 
-                                    filtered = pulseActivities.filter(a => isBefore(startOfDay(new Date(a.ticket.created_at)), startDate)); 
-                                } else { 
-                                    filtered = pulseActivities.filter(a => format(startOfDay(new Date(a.ticket.created_at)), 'MMM dd') === label); 
-                                } 
+                                filtered = pulseActivities.filter(a => format(startOfDay(new Date(a.ticket.created_at)), 'MMM dd') === label); 
                                 setMetricModalTitle(`Tickets Created: ${label}`); 
                                 setMetricModalTickets(filtered); 
                                 setMetricModalOpen(true); 
@@ -557,7 +570,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             legend: { display: false }, 
                             tooltip: { 
                                 callbacks: { 
-                                    title: (items: any) => items[0].label.includes('Prior') ? 'Tickets older than 45 days' : `Created on ${items[0].label}`, 
+                                    title: (items: any) => `Created on ${items[0].label}`, 
                                     label: (item: any) => `${item.raw} active tickets` 
                                 } 
                             }, 
@@ -573,7 +586,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             x: { 
                                 display: true, 
                                 grid: { display: false }, 
-                                ticks: { font: { size: 11, weight: 'bold' }, color: '#94a3b8', maxTicksLimit: 15 } 
+                                ticks: { 
+                                    font: { size: 11, weight: 'bold' }, 
+                                    color: '#94a3b8', 
+                                    maxTicksLimit: Math.min(labels.length, 20),
+                                    autoSkip: true,
+                                    maxRotation: labels.length > 30 ? 45 : 0,
+                                } 
                             }, 
                             y: { display: false, min: 0 } 
                         } 
@@ -904,7 +923,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             groupQueryPart = `(${REAL_GROUP_IDS.map(id => `group_id:${id}`).join(' OR ')})`;
         }
 
-        const activeStatusString = [...ACTIVE_TICKET_STATUSES, 4, 5].map(s => `status:${s}`).join(' OR ');
+        const activeStatusString = ACTIVE_TICKET_STATUSES.map(s => `status:${s}`).join(' OR ');
         const query = `${groupQueryPart} AND (${activeStatusString})`;
         
         let processed: TicketActivity[] = [];
@@ -1073,43 +1092,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       }, allActiveTicketsFetched[0]).created_at))
                     : today;
                 
-                const diffDays = differenceInDays(today, oldestDate) + 1;
-                const daysToShow = Math.min(Math.max(diffDays, 1), 45);
-                const startDate = subDays(today, daysToShow - 1);
-                const interval = eachDayOfInterval({ start: startDate, end: today }); 
-                const dateKeys = interval.map(d => format(d, 'MMM dd')); 
-                const dailyCounts: Record<string, number> = {}; dateKeys.forEach(k => dailyCounts[k] = 0); 
-                let priorCount = 0;
-                allActiveTicketsFetched.forEach(t => { const created = startOfDay(new Date(t.created_at)); if (isBefore(created, startDate)) priorCount++; else { const k = format(created, 'MMM dd'); if (dailyCounts[k] !== undefined) dailyCounts[k]++; } });
-                
-                const scaleFactor = (m.activeTickets > allActiveTicketsFetched.length) ? m.activeTickets / allActiveTicketsFetched.length : 1;
-                let totalScaled = 0;
-                if (scaleFactor > 1.05) {
-                    Object.keys(dailyCounts).forEach(k => { 
-                        dailyCounts[k] = Math.round(dailyCounts[k] * scaleFactor); 
-                        totalScaled += dailyCounts[k];
+                const startDate = oldestDate;
+                const interval = eachDayOfInterval({ start: startDate, end: today });
+                const dateKeys = interval.map(d => format(d, 'MMM dd'));
+                const dailyCounts: Record<string, number> = {};
+                dateKeys.forEach(k => dailyCounts[k] = 0);
+
+                allActiveTicketsFetched.forEach(t => {
+                    const created = startOfDay(new Date(t.created_at));
+                    const k = format(created, 'MMM dd');
+                    if (dailyCounts[k] !== undefined) dailyCounts[k]++;
+                });
+
+                const totalMapped = Object.values(dailyCounts).reduce((a, b) => a + b, 0);
+                const scaleFactor2 = (m.activeTickets > totalMapped && totalMapped > 0)
+                    ? m.activeTickets / totalMapped
+                    : 1;
+
+                if (scaleFactor2 > 1.05) {
+                    let runningTotal = 0;
+                    const keys = Object.keys(dailyCounts);
+                    keys.forEach(k => {
+                        dailyCounts[k] = Math.round(dailyCounts[k] * scaleFactor2);
+                        runningTotal += dailyCounts[k];
                     });
-                    priorCount = Math.round(priorCount * scaleFactor);
-                    totalScaled += priorCount;
-                    
-                    // Adjust the largest bucket to make the sum exactly m.activeTickets
-                    const diff = m.activeTickets - totalScaled;
+                    // Adjust largest bucket to hit exact total
+                    const diff = m.activeTickets - runningTotal;
                     if (diff !== 0) {
-                        let maxKey = Object.keys(dailyCounts)[0];
-                        let maxVal = dailyCounts[maxKey];
-                        Object.keys(dailyCounts).forEach(k => {
-                            if (dailyCounts[k] > maxVal) { maxVal = dailyCounts[k]; maxKey = k; }
-                        });
-                        if (priorCount > maxVal) {
-                            priorCount += diff;
-                        } else {
-                            dailyCounts[maxKey] += diff;
-                        }
+                        const maxKey = keys.reduce((a, b) => dailyCounts[a] > dailyCounts[b] ? a : b);
+                        dailyCounts[maxKey] = Math.max(0, dailyCounts[maxKey] + diff);
                     }
                 }
 
-                const finalLabels = priorCount > 0 ? ["Prior (>45d)", ...dateKeys] : dateKeys;
-                const finalData = priorCount > 0 ? [priorCount, ...dateKeys.map(k => dailyCounts[k])] : dateKeys.map(k => dailyCounts[k]);
+                const finalLabels = dateKeys;
+                const finalData = dateKeys.map(k => dailyCounts[k]);
                 setActualBacklogData({ labels: finalLabels, data: finalData });
             } catch (err: any) {} finally { setIsFetchingBacklog(false); }
         })();

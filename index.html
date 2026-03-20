@@ -6,9 +6,6 @@
     <title>eCompleteCommerce Executive Dashboard</title>
     <script>
       // Aggressively suppress benign errors that clutter the console in the AI Studio environment
-      const originalConsoleError = console.error;
-      const originalConsoleWarn = console.warn;
-
       const noisePatterns = [
         'failed to connect to websocket',
         'A listener indicated an asynchronous response',
@@ -17,28 +14,89 @@
         'Could not create web worker',
         'Origin trial controlled feature not enabled',
         'Unrecognized feature',
-        'No ID or name found in config'
+        'No ID or name found in config',
+        'cookienotificationbar',
+        'googletagmanager',
+        'apis.google.com',
+        'gstatic.com',
+        'payments.google.com',
+        'payments.sandbox.google.com',
+        'www-onepick-opensocial',
+        'boq-makersuite',
+        'script-src-elem',
+        'report-only',
+        'integrator.js',
+        'GTM-',
+        'gtag',
+        'aistudio',
+        'makersuite',
+        'inproduct_help',
+        'uservoice',
+        'feedback/js',
+        'chat_load',
+        'help_api',
+        'chatsupport',
+        'survey',
+        'Autofill.enable',
+        'violation has been logged but no further action',
+        'ResizeObserver loop',
+        'Non-Error promise rejection',
+        'willReadFrequently',
       ];
 
+      const shouldSuppress = (args) => {
+        const msg = args.map(a => {
+          try { return String(a); } catch(e) { return ''; }
+        }).join(' ');
+        return noisePatterns.some(p => msg.includes(p));
+      };
+
+      const originalConsoleError = console.error;
+      const originalConsoleWarn = console.warn;
+      const originalConsoleLog = console.log;
+      const originalConsoleInfo = console.info;
+
+      window.addEventListener('securitypolicyviolation', (e) => {
+        // Prevent the browser from logging the CSP violation to the console
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
       console.error = function(...args) {
-        const msg = String(args[0]);
-        if (noisePatterns.some(pattern => msg.includes(pattern))) return;
+        if (shouldSuppress(args)) return;
         originalConsoleError.apply(console, args);
       };
-
       console.warn = function(...args) {
-        const msg = String(args[0]);
-        if (noisePatterns.some(pattern => msg.includes(pattern))) return;
+        if (shouldSuppress(args)) return;
         originalConsoleWarn.apply(console, args);
       };
+      console.log = function(...args) {
+        if (shouldSuppress(args)) return;
+        originalConsoleLog.apply(console, args);
+      };
+      console.info = function(...args) {
+        if (shouldSuppress(args)) return;
+        originalConsoleInfo.apply(console, args);
+      };
+
+      window.addEventListener('error', function(event) {
+        const msg = (event.message || '') + (event.filename || '');
+        if (noisePatterns.some(p => msg.includes(p))) {
+          event.preventDefault();
+          event.stopPropagation();
+          return true;
+        }
+      }, true);
 
       window.addEventListener('unhandledrejection', function(event) {
-        const msg = event.reason && event.reason.message ? String(event.reason.message) : '';
-        if (noisePatterns.some(pattern => msg.includes(pattern))) {
+        const msg = event.reason && event.reason.message
+          ? String(event.reason.message)
+          : String(event.reason || '');
+        if (noisePatterns.some(p => msg.includes(p))) {
           event.preventDefault();
           event.stopPropagation();
         }
-      });
+      }, true);
     </script>
     <link rel="stylesheet" href="/index.css">
   </head>

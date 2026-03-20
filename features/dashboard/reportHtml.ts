@@ -97,6 +97,7 @@ export const generateReportHtml = (
     const sentTextColor = avgSentiment > 70 ? '#15803d' : avgSentiment > 40 ? '#a16207' : '#b91c1c';
 
     const formatStrategicItemForReport = (item: string) => {
+        if (!item || typeof item !== 'string') return '';
         const parts = item.split(':');
         if (parts.length > 1) {
             return `<strong style="color:#2C3E50; font-weight:900; display:block; margin-bottom:8px; font-size:16px;">${linkifyForReport(parts[0].trim())}</strong><span style="color:#64748b; display:block;">${linkifyForReport(parts.slice(1).join(':').trim())}</span>`;

@@ -53,10 +53,13 @@ function pcmToWav(pcmData: Uint8Array, sampleRate: number): string {
   pcmView.set(pcmData);
 
   // Convert to base64
-  return btoa(
-    new Uint8Array(buffer)
-      .reduce((data, byte) => data + String.fromCharCode(byte), '')
-  );
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 // Manual implementation of raw PCM decoding
@@ -235,35 +238,67 @@ export const generateExecutiveSummary = async (tickets: TicketActivity[], metric
 export const generateSpeech = async (text: string): Promise<string | null> => {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   try {
+    // Extract text starting from "Good day valued client" if present
+    let speechText = text;
+    const matchIndex = speechText.toLowerCase().indexOf("good day valued client");
+    if (matchIndex !== -1) {
+      speechText = speechText.substring(matchIndex);
+    }
+
     // Clean the text for better TTS (remove markdown headers, emojis, special chars)
     // Only keep alphanumeric characters, basic punctuation, and whitespace
-    const cleanText = text
+    const cleanText = speechText
         .replace(/[*#]/g, '')
         .replace(/[^\w\s.,!?'"-]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .substring(0, 1000); // Truncate to 1000 characters to be safe
+        .substring(0, 4500); // Truncate to 4500 characters to be safe
     
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: cleanText }] }],
-      config: {
-        responseModalities: ["AUDIO"],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
-          },
-        },
-      },
-    });
+    // Chunk the text into pieces of max 1000 characters
+    const chunks: string[] = [];
+    let currentChunk = "";
+    const sentences = cleanText.split(/(?<=[.!?])\s+/);
+    for (const sentence of sentences) {
+        if (currentChunk.length + sentence.length > 1000) {
+            if (currentChunk) chunks.push(currentChunk);
+            currentChunk = sentence;
+        } else {
+            currentChunk += (currentChunk ? " " : "") + sentence;
+        }
+    }
+    if (currentChunk) chunks.push(currentChunk);
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (base64Audio) {
-      // Decode base64 to get raw PCM bytes
-      const pcmData = decodeBase64(base64Audio);
-      // Convert PCM to WAV
-      const wavBase64 = pcmToWav(pcmData, 24000);
-      return wavBase64;
+    const pcmChunks: Uint8Array[] = [];
+    for (const chunk of chunks) {
+        if (!chunk.trim()) continue;
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash-preview-tts",
+          contents: [{ parts: [{ text: chunk }] }],
+          config: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: 'Kore' },
+              },
+            },
+          },
+        });
+
+        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (base64Audio) {
+          pcmChunks.push(decodeBase64(base64Audio));
+        }
+    }
+
+    if (pcmChunks.length > 0) {
+      const totalLength = pcmChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+      const combinedPcm = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of pcmChunks) {
+          combinedPcm.set(chunk, offset);
+          offset += chunk.length;
+      }
+      return pcmToWav(combinedPcm, 24000);
     }
     return null;
   } catch (e) {

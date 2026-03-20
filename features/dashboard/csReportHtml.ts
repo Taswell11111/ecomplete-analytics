@@ -5,7 +5,7 @@ export const generateCSReportHtml = (
     csStrategyContent: string, 
     brandsIncluded: string[]
 ) => {
-    if (!csStrategyContent) return '';
+    if (!csStrategyContent || typeof csStrategyContent !== 'string') return '';
     
     // Process the content into sections based on the expected headers
     const sections = csStrategyContent.split(/\*\*([^*]+)\*\*:/g);
@@ -77,7 +77,7 @@ export const generateCSReportHtml = (
 
       <section>
         <h3>Brand Snapshots & Key Tickets</h3>
-        ${snapshots ? linkify(snapshots).split('\n\n').map(p => {
+        ${(snapshots && typeof snapshots === 'string') ? linkify(snapshots).split('\n\n').map(p => {
           if (p.includes('Risk Level:')) {
             return `<div class="brand-card">${p.replace(/\n/g, '<br>')}</div>`;
           }
@@ -88,7 +88,7 @@ export const generateCSReportHtml = (
       <section style="margin-top: 80px;">
         <h3>Cross-Brand Risk Heatmap</h3>
         <div class="heatmap-grid">
-           ${heatmap ? heatmap.split('\n\n').map((col, i) => {
+           ${(heatmap && typeof heatmap === 'string') ? heatmap.split('\n\n').map((col, i) => {
              const title = i === 0 ? 'HIGH RISK' : i === 1 ? 'MODERATE RISK' : 'LOW RISK';
              const cls = i === 0 ? 'hdr-high' : i === 1 ? 'hdr-mod' : 'hdr-low';
              return `<div class="heatmap-col">
@@ -102,7 +102,7 @@ export const generateCSReportHtml = (
       <section style="margin-top: 80px;">
         <h3>Agent Ticket Allocation (Today)</h3>
         <div class="agent-grid">
-          ${allocation ? allocation.split('AGENT').slice(1).map(entry => {
+          ${(allocation && typeof allocation === 'string') ? allocation.split('AGENT').slice(1).map(entry => {
             const lines = entry.trim().split('\n');
             const agentNum = lines[0];
             const tasks = lines.slice(1).join('<br>');
@@ -119,7 +119,7 @@ export const generateCSReportHtml = (
       <section style="margin-top: 80px;">
         <h3>Strategic Conclusion</h3>
         <div style="background: rgba(255,255,255,0.02); padding: 40px; border-radius: 32px;">
-          ${conclusion ? conclusion.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') : ''}
+          ${(conclusion && typeof conclusion === 'string') ? conclusion.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') : ''}
         </div>
       </section>
 

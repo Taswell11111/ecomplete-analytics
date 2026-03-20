@@ -69,12 +69,16 @@ const App: React.FC = () => {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const playbackIdRef = React.useRef(0);
 
   const playAudio = async (base64: string) => {
     if (!base64) {
         console.error("Audio base64 is empty");
         return;
     }
+    
+    const currentId = ++playbackIdRef.current;
+    
     if (audioRef.current) {
         audioRef.current.pause();
     }
@@ -114,12 +118,32 @@ const App: React.FC = () => {
         console.error("Chime failed", e);
     }
 
+    // Abort if another play request was made during the chime
+    if (currentId !== playbackIdRef.current) {
+        return;
+    }
+
     const audio = new Audio(`data:audio/wav;base64,${base64}`);
     audio.onended = () => setIsPlayingAudio(false);
     audio.onpause = () => setIsPlayingAudio(false);
     audio.onplay = () => setIsPlayingAudio(true);
     audioRef.current = audio;
-    audio.play().catch(e => console.error("Audio play blocked", e));
+    
+    // Fade-in effect
+    audio.volume = 0;
+    audio.play().then(() => {
+        let vol = 0;
+        const fadeInterval = setInterval(() => {
+            vol += 0.05;
+            if (vol >= 1) {
+                audio.volume = 1;
+                clearInterval(fadeInterval);
+            } else {
+                audio.volume = vol;
+            }
+        }, 50); // 50ms * 20 steps = 1000ms fade-in
+    }).catch(e => console.error("Audio play blocked", e));
+    
     setIsPlayingAudio(true);
   };
 

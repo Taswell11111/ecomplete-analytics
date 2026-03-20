@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ShieldAlert, Info, TrendingUp, MessageSquarePlus, Volume2, Pause, Loader2, RefreshCw, Send, ChevronLeft, Download } from 'lucide-react';
 import { TicketActivity, Group, DashboardMetrics } from '../types';
-import { cleanMarkdown, parseSynopsisSection, parseBulletList, linkifyTicketIds } from '../utils/textUtils';
+import { cleanMarkdown, parseSynopsisSection, parseBulletList, linkifyTicketIdsToHtml } from '../utils/textUtils';
 import { generateSpeech, regenerateExecutiveSummaryWithFeedback } from '../services/geminiService';
 
 type InsightReportPageProps = {
@@ -177,7 +177,7 @@ export const InsightReportPage: React.FC<InsightReportPageProps> = ({
                                     {notableItems.map((item, i) => (
                                         <li key={i} className="flex gap-5 group/item">
                                             <span className="text-emerald-500 font-black text-sm mt-1">0{i+1}</span>
-                                            <span className="text-sm font-bold text-slate-600 leading-relaxed group-hover/item:text-slate-900 transition-colors" dangerouslySetInnerHTML={{ __html: linkifyTicketIds(item) }}></span>
+                                            <span className="text-sm font-bold text-slate-600 leading-relaxed group-hover/item:text-slate-900 transition-colors" dangerouslySetInnerHTML={{ __html: linkifyTicketIdsToHtml(item) }}></span>
                                         </li>
                                     ))}
                                 </ul>
@@ -192,7 +192,7 @@ export const InsightReportPage: React.FC<InsightReportPageProps> = ({
                                     {riskItems.map((item, i) => (
                                         <li key={i} className="flex gap-5 group/item">
                                             <span className="text-red-500 font-black text-sm mt-1">!</span>
-                                            <span className="text-sm font-bold text-slate-600 leading-relaxed group-hover/item:text-slate-900 transition-colors" dangerouslySetInnerHTML={{ __html: linkifyTicketIds(item) }}></span>
+                                            <span className="text-sm font-bold text-slate-600 leading-relaxed group-hover/item:text-slate-900 transition-colors" dangerouslySetInnerHTML={{ __html: linkifyTicketIdsToHtml(item) }}></span>
                                         </li>
                                     ))}
                                 </ul>
@@ -214,7 +214,7 @@ export const InsightReportPage: React.FC<InsightReportPageProps> = ({
                                             <div className="w-8 h-8 rounded-lg bg-ecomplete-accent text-slate-900 flex items-center justify-center text-[10px] font-black shrink-0">
                                                 {i+1}
                                             </div>
-                                            <p className="text-xs font-bold text-slate-300 leading-relaxed group-hover/card:text-white transition-colors" dangerouslySetInnerHTML={{ __html: linkifyTicketIds(item) }}></p>
+                                            <p className="text-xs font-bold text-slate-300 leading-relaxed group-hover/card:text-white transition-colors" dangerouslySetInnerHTML={{ __html: linkifyTicketIdsToHtml(item) }}></p>
                                         </div>
                                     </div>
                                 ))}

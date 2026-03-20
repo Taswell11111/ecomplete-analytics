@@ -1,10 +1,13 @@
 import React from 'react';
 
 // Clean markdown utility
-export const cleanMarkdown = (text: string) => text.replace(/\*\*/g, '').replace(/###/g, '').replace(/##/g, '');
+export const cleanMarkdown = (text: string) => {
+    if (!text || typeof text !== 'string') return '';
+    return text.replace(/\*\*/g, '').replace(/###/g, '').replace(/##/g, '');
+};
 
 export const parseSynopsisSection = (text: string, header: string) => {
-    if (!text) return null;
+    if (!text || typeof text !== 'string') return null;
     const headers = [
         "Executive Overview",
         "Notable Points",
@@ -39,7 +42,7 @@ export const parseSynopsisSection = (text: string, header: string) => {
 };
 
 export const parseBulletList = (text: string | null) => {
-    if (!text) return [];
+    if (!text || typeof text !== 'string') return [];
     return text.split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0 && (line.startsWith('-') || line.startsWith('•') || line.startsWith('*') || /^\d+\./.test(line)))
@@ -47,6 +50,7 @@ export const parseBulletList = (text: string | null) => {
 };
 
 export const linkifyTicketIds = (text: string) => {
+    if (!text || typeof text !== 'string') return '';
     const regex = /#(\d+)/g;
     const parts = text.split(regex);
     return parts.map((part, i) => {
@@ -64,6 +68,7 @@ export const linkifyTicketIds = (text: string) => {
 };
 
 export const linkifyTicketIdsToHtml = (text: string) => {
+    if (!text || typeof text !== 'string') return '';
     // Strictly target # followed by digits, ensuring it's not already part of a URL
     return text.replace(/(^|\s|[^\w/])#(\d+)\b/g, (match, prefix, id) => {
         return `${prefix}<a href="https://ecomplete.freshdesk.com/a/tickets/${id}" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:underline; font-weight:900;">${id}</a>`; // Removed # in display
@@ -71,6 +76,7 @@ export const linkifyTicketIdsToHtml = (text: string) => {
 };
 
 export const formatStrategicItem = (text: string) => {
+    if (!text || typeof text !== 'string') return null;
     let colonIndex = text.indexOf(':');
     let separatorLength = 1;
     
@@ -94,6 +100,7 @@ export const formatStrategicItem = (text: string) => {
 };
 
 export const formatStrategicHtml = (text: string) => {
+    if (!text || typeof text !== 'string') return '';
     const linkified = linkifyTicketIdsToHtml(text);
     
     // Logic to separate bold title from body
