@@ -4,7 +4,7 @@ import { Group, ConnectionMode, TestConnectionStatus, TicketScope } from './type
 import { ECOMPLETE_GROUPS, CONSOLIDATED_GROUP_ID, RETURNGO_LEVIS_STORE_URL, BOUNTY_DIESEL_URL } from './constants';
 import { testConnection } from './services/freshdeskService';
 import { testReturnGoConnection } from './services/returnGoService';
-import { Activity, LayoutDashboard, Truck, Undo2, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { Activity, LayoutDashboard, Truck, Undo2, ChevronLeft, ChevronRight, Settings, Package } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -13,7 +13,7 @@ import { ShippingDashboard } from './shipping/Dashboard';
 import { ReturnsPage } from './pages/ReturnsPage';
 import { ConnectionValidator } from './components/ConnectionValidator';
 
-type Page = 'dashboard' | 'shipping' | 'returns' | 'insight';
+type Page = 'dashboard' | 'shipping' | 'returns' | 'insight' | 'inventory';
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -70,7 +70,7 @@ const App: React.FC = () => {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
-  const playAudio = (base64: string) => {
+  const playAudio = async (base64: string) => {
     if (!base64) {
         console.error("Audio base64 is empty");
         return;
@@ -78,6 +78,42 @@ const App: React.FC = () => {
     if (audioRef.current) {
         audioRef.current.pause();
     }
+    
+    // Play chime sound (like phone charger)
+    try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        
+        // First tone
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.type = 'sine';
+        osc1.frequency.value = 659.25; // E5
+        gain1.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain1.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
+        gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc1.start(audioCtx.currentTime);
+        osc1.stop(audioCtx.currentTime + 0.3);
+
+        // Second tone
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.type = 'sine';
+        osc2.frequency.value = 880; // A5
+        gain2.gain.setValueAtTime(0, audioCtx.currentTime + 0.15);
+        gain2.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.2);
+        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+        osc2.start(audioCtx.currentTime + 0.15);
+        osc2.stop(audioCtx.currentTime + 0.6);
+
+        await new Promise(resolve => setTimeout(resolve, 700));
+    } catch(e) {
+        console.error("Chime failed", e);
+    }
+
     const audio = new Audio(`data:audio/wav;base64,${base64}`);
     audio.onended = () => setIsPlayingAudio(false);
     audio.onpause = () => setIsPlayingAudio(false);
@@ -279,6 +315,15 @@ const App: React.FC = () => {
                       <Undo2 size={22} className={`shrink-0 ${activePage === 'returns' ? 'text-ecomplete-accent' : (!sidebarOpen ? 'text-white' : 'text-slate-600 group-hover:text-slate-300')}`} />
                       {sidebarOpen && <span className="font-black text-xs uppercase tracking-wider text-left leading-tight animate-in fade-in duration-300">Returns Intelligence</span>}
                   </button>
+
+                  <button 
+                      onClick={() => setActivePage('inventory')}
+                      className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-500 group relative overflow-hidden ${activePage === 'inventory' ? 'bg-ecomplete-primary text-white shadow-[0_10px_30px_rgba(44,62,80,0.5)]' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'} ${!sidebarOpen && 'justify-center px-0'}`}
+                  >
+                      {activePage === 'inventory' && <div className="absolute left-0 top-0 w-1.5 h-full bg-ecomplete-accent"></div>}
+                      <Package size={22} className={`shrink-0 ${activePage === 'inventory' ? 'text-ecomplete-accent' : (!sidebarOpen ? 'text-white' : 'text-slate-600 group-hover:text-slate-300')}`} />
+                      {sidebarOpen && <span className="font-black text-xs uppercase tracking-wider text-left leading-tight animate-in fade-in duration-300">Order/Inventory Intelligence</span>}
+                  </button>
               </nav>
 
               <div className={`p-4 pb-6 border-t border-slate-800/50 bg-slate-950/30 transition-all duration-300 ${!sidebarOpen ? 'px-2 flex justify-center' : 'px-4'}`}>
@@ -323,6 +368,10 @@ const App: React.FC = () => {
 
             <div className={activePage === 'returns' ? 'block' : 'hidden'}>
                 <ReturnsPage selectedGroup={selectedGroup} appContext={appContext} />
+            </div>
+
+            <div className={activePage === 'inventory' ? 'block' : 'hidden'}>
+                <div className="flex items-center justify-center h-screen text-slate-500 font-black uppercase tracking-widest">Planned for production</div>
             </div>
 
             <div className={activePage === 'insight' ? 'block' : 'hidden'}>

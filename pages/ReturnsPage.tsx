@@ -874,21 +874,21 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col animate-in fade-in duration-500">
             {/* Improved Header */}
-            <header className="bg-white border-b border-slate-200 px-10 h-24 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+            <header className="bg-gradient-to-r from-slate-900 via-ecomplete-primary to-slate-900 border-b border-white/10 px-10 h-24 flex items-center justify-between sticky top-0 z-50 shadow-2xl">
                 <div className="flex items-center gap-8">
                     {appContext === 'admin' && (
-                        <button onClick={() => setView('hub')} className="p-3 bg-slate-50 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors border border-slate-200">
+                        <button onClick={() => setView('hub')} className="p-3 bg-white/5 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-colors border border-white/10">
                             <Undo2 size={20} />
                         </button>
                     )}
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase flex items-center gap-4">
+                        <h1 className="text-3xl font-black text-white tracking-tighter uppercase flex items-center gap-4">
                             {targetConfig?.label}
                             {targetConfig?.isBounty && (
                                 <div className="relative">
                                     <button 
                                         onClick={() => setBrandDropdownOpen(!brandDropdownOpen)} 
-                                        className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 ml-4 border border-slate-700"
+                                        className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 hover:bg-white/20 transition-all shadow-lg ml-4 border border-white/10"
                                     >
                                         <Building2 size={14} />
                                         {bountyBrandFilter || "Consolidated View"} 
@@ -898,13 +898,13 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
                                     {brandDropdownOpen && (
                                         <>
                                         <div className="fixed inset-0 z-40" onClick={() => setBrandDropdownOpen(false)}></div>
-                                        <div className="absolute top-full left-4 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 text-slate-900">
-                                            <button onClick={() => handleBountyFilter(null)} className={`w-full text-left p-3 rounded-xl text-xs font-black uppercase tracking-wider mb-1 ${!bountyBrandFilter ? 'bg-slate-100 text-slate-800' : 'text-slate-500 hover:bg-slate-50'}`}>
+                                        <div className="absolute top-full left-4 mt-2 w-56 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 text-white">
+                                            <button onClick={() => handleBountyFilter(null)} className={`w-full text-left p-3 rounded-xl text-xs font-black uppercase tracking-wider mb-1 ${!bountyBrandFilter ? 'bg-ecomplete-accent text-slate-900' : 'text-slate-300 hover:bg-slate-700'}`}>
                                                 Consolidated View
                                             </button>
-                                            <div className="h-px bg-slate-100 my-1"></div>
+                                            <div className="h-px bg-slate-700 my-1"></div>
                                             {BOUNTY_STORES.map(store => (
-                                                <button key={store} onClick={() => handleBountyFilter(store)} className={`w-full text-left p-3 rounded-xl text-xs font-bold uppercase tracking-wider mb-1 ${bountyBrandFilter === store ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'}`}>
+                                                <button key={store} onClick={() => handleBountyFilter(store)} className={`w-full text-left p-3 rounded-xl text-xs font-bold uppercase tracking-wider mb-1 ${bountyBrandFilter === store ? 'bg-ecomplete-accent text-slate-900' : 'text-slate-300 hover:bg-slate-700'}`}>
                                                     {store}
                                                 </button>
                                             ))}
@@ -914,14 +914,14 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
                                 </div>
                             )}
                         </h1>
-                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] mt-1 opacity-80">{targetConfig?.shopName}</p>
+                        <p className="text-[10px] font-black text-ecomplete-accent uppercase tracking-[0.3em] mt-1 opacity-80">{targetConfig?.shopName}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => targetConfig && loadDashboard(targetConfig)} 
                         disabled={loading}
-                        className="bg-blue-600 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center gap-3 hover:bg-blue-700 transition-all"
+                        className="bg-ecomplete-accent text-slate-900 px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-ecomplete-accent/20 flex items-center gap-3 hover:bg-yellow-400 transition-all"
                     >
                         {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
                         Sync Data

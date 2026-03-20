@@ -66,6 +66,15 @@
   100% { transform: translateX(200%) skewX(-15deg); opacity: 0; }
 }
 
+@keyframes glimmer {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.animate-glimmer {
+  animation: glimmer 2s infinite;
+}
+
 @keyframes progress-indeterminate {
   0% { transform: translateX(-100%) scaleX(0.2); }
   50% { transform: translateX(0%) scaleX(0.5); }

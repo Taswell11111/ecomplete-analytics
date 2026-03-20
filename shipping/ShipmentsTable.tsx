@@ -65,14 +65,14 @@ export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
     getSortedRowModel: getSortedRowModel(),
     initialState: {
       pagination: {
-        pageSize: 25,
+        pageSize: 35,
       },
     },
   });
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+      <div className="p-2 border-b border-slate-200 flex justify-between items-center">
         <h3 className="font-semibold text-slate-800">Shipments</h3>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -81,18 +81,18 @@ export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
             placeholder="Search shipments..."
             value={globalFilter}
             onChange={e => setGlobalFilter(e.target.value)}
-            className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="pl-9 pr-4 py-1 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
       
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left text-slate-600">
-          <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+        <table className="w-full text-xs text-left text-slate-600">
+          <thead className="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map(header => (
-                  <th key={header.id} className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-100" onClick={header.column.getToggleSortingHandler()}>
+                  <th key={header.id} className="px-2 py-2 font-medium cursor-pointer hover:bg-slate-100" onClick={header.column.getToggleSortingHandler()}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
                     {{
                       asc: ' 🔼',
@@ -108,7 +108,7 @@ export const ShipmentsTable: React.FC<{ data: any[] }> = ({ data }) => {
               <React.Fragment key={row.id}>
                 <tr className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                   {row.getVisibleCells().map(cell => (
-                    <td key={cell.id} className="px-4 py-3 whitespace-nowrap">
+                    <td key={cell.id} className="px-2 py-1.5 whitespace-nowrap">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

@@ -53,13 +53,10 @@ function pcmToWav(pcmData: Uint8Array, sampleRate: number): string {
   pcmView.set(pcmData);
 
   // Convert to base64
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+  return btoa(
+    new Uint8Array(buffer)
+      .reduce((data, byte) => data + String.fromCharCode(byte), '')
+  );
 }
 
 // Manual implementation of raw PCM decoding
@@ -175,36 +172,34 @@ export const generateExecutiveSummary = async (tickets: TicketActivity[], metric
     
     TICKET DATA: ${JSON.stringify(dataSummary)}
 
-    Generate a comprehensive, data-driven executive synopsis and audio briefing script. 
+    Generate a concise, data-driven executive synopsis and audio briefing script. 
     The script must be professional, authoritative, and focus on data analytics: ticket volume, frequency, types, and key points of attention.
+    Avoid duplicate or redundant topics. Keep the content concise to reduce the briefing length by 20%.
     Specifically, analyze the Aging & Response metrics. If the unresponded count is high or the average age is high, highlight this as a critical operational risk.
 
     The audio briefing script MUST reflect on:
-    1. Total Active Ticket Queue (which represents the Total Active Volume) and the breakdown per group.
-    2. Historical Backlog Matrix (Active Queue Volume).
-    3. Brand Health Risk Threshold.
-    4. Customer Emotional Sentiment.
-    5. Metric blocks for Created Today, Closed Today, Today's activity, Reopened Today, Avg Response.
-    6. Sequential Volume Flow chart data.
-    7. Urgency profile and Category Matrix.
-    8. In-depth Support Ecosystem Pulse Check.
+    1. Total Active Ticket Queue and the breakdown per group.
+    2. Historical Backlog Matrix.
+    3. Brand Health Risk Threshold & Customer Emotional Sentiment.
+    4. Metric blocks for Created Today, Closed Today, Today's activity.
+    5. Urgency profile and Category Matrix analysis.
+    6. In-depth Support Ecosystem Pulse Check.
 
     The script should follow this flow:
-    1. Greeting and Introduction.
-    2. Total Active Queue Breakdown (mentioning the ${metrics.activeTickets} tickets and breakdown per group).
-    3. Historical Backlog Analysis (trends in ticket creation dates).
-    4. Aging & Response Analysis (Discuss response rates and ticket age).
+    1. Greeting and Introduction (MUST start exactly with: "Good day valued client. Welcome to your eComplete Intellgence and Analytics Centre - a central hub providing you with interconnected and cross-dimensial insight into your operational and business health factors. We'll begin with the Total Active Ticket Queue....").
+    2. Total Active Queue Breakdown.
+    3. Historical Backlog Analysis.
+    4. Aging & Response Analysis.
     5. Brand Health Risk and Customer Sentiment assessment.
-    6. Metric Highlights (Created Today, Closed Today, Activity, Reopened Today, Avg Response).
-    7. Sequential Volume Flow analysis.
-    8. Urgency profile and Category Matrix analysis.
-    9. Support Ecosystem Pulse Check (Key themes and specific high-risk tickets).
-    10. Strategic Action Roadmap.
+    6. Metric Highlights.
+    7. Urgency profile and Category Matrix analysis.
+    8. Support Ecosystem Pulse Check.
+    9. Strategic Action Roadmap.
 
     Output strictly using these headers and rules:
 
     **Executive Overview**: 
-    1. Write 3-4 detailed paragraphs in British English.
+    1. Write 2-3 concise paragraphs in British English.
     2. LEAN HEAVILY ON DATA ANALYTICS regarding the SPECIFIC REASONS customers are submitting service requests.
     3. EXPLICITLY NOTE COMMON THEMES AND TRENDS being reported by customers across the brands.
     4. START THE VOLUME SYNTHESIS PARAGRAPH EXACTLY WITH: "With a reference to the ticket volume comparison..." and analyse if the volume is up or down compared to last week and what that implies.
@@ -216,20 +211,19 @@ export const generateExecutiveSummary = async (tickets: TicketActivity[], metric
     **Critical Risk Alert**: List specific high-risk tickets (Format: Customer - #ID: Description of risk). Bulleted list.
 
     **Immediate/Next Steps**:
-    List 3-5 distinct, urgent actions. BE SPECIFIC.
+    List 3 distinct, urgent actions. BE SPECIFIC.
     Format: "Contact customer [Name/ID] regarding ticket #[ID] to resolve [Issue]..."
     Focus on critical urgency items and brand health/sentiment risks. Bulleted list.
 
     **Strategic Action Roadmap**:
-    List 3 specific, high-impact steps to resolve the biggest issues identified above. 
+    List 2-3 specific, high-impact steps to resolve the biggest issues identified above. 
     Format as numbered list: 1. [Action] - [Reason]
     `;
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview', 
-            contents: [{ parts: [{ text: prompt }] }],
-            config: { thinkingConfig: { thinkingBudget: 32768 } }
+            model: 'gemini-3-flash-preview', 
+            contents: [{ parts: [{ text: prompt }] }]
         });
         return response.text || "Summary failed.";
     } catch (e: any) {
@@ -241,14 +235,20 @@ export const generateExecutiveSummary = async (tickets: TicketActivity[], metric
 export const generateSpeech = async (text: string): Promise<string | null> => {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   try {
-    // Clean the text for better TTS (remove markdown headers)
-    const cleanText = text.replace(/\*\*/g, '').replace(/#/g, '');
+    // Clean the text for better TTS (remove markdown headers, emojis, special chars)
+    // Only keep alphanumeric characters, basic punctuation, and whitespace
+    const cleanText = text
+        .replace(/[*#]/g, '')
+        .replace(/[^\w\s.,!?'"-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 1000); // Truncate to 1000 characters to be safe
     
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Read this executive summary professionally and clearly. Use a steady, authoritative tone suitable for a business briefing: ${cleanText}` }] }],
+      contents: [{ parts: [{ text: cleanText }] }],
       config: {
-        responseModalities: [Modality.AUDIO],
+        responseModalities: ["AUDIO"],
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: { voiceName: 'Kore' },
@@ -267,7 +267,7 @@ export const generateSpeech = async (text: string): Promise<string | null> => {
     }
     return null;
   } catch (e) {
-    console.error("TTS generation failed", e);
+    console.error("TTS generation failed", JSON.stringify(e));
     return null;
   }
 };

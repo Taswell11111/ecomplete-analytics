@@ -219,10 +219,10 @@ export const FreshdeskPulse: React.FC<FreshdeskPulseProps> = ({ activities, onMe
                             </div>
                         </div>
                         <div className="w-full h-14 bg-slate-200 rounded-2xl overflow-hidden flex shadow-inner p-1.5">
-                            <div className="h-full bg-gradient-to-r from-red-600 to-red-500 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg transition-all duration-1000" style={{ width: `${stats.total > 0 ? (stats.unrespondedCount / stats.total) * 100 : 0}%` }}>
+                            <div className="h-full bg-gradient-to-r from-red-600 to-red-500 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg transition-all duration-1000" style={{ width: `${stats.total > 0 ? (stats.unrespondedCount / stats.total) * 100 : 0}%` }} title={`Unresponded: ${stats.unrespondedCount}`}>
                                 {stats.total > 0 && (stats.unrespondedCount / stats.total) * 100 > 10 ? `${Math.round((stats.unrespondedCount / stats.total) * 100)}%` : ''}
                             </div>
-                            <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg transition-all duration-1000 ml-1" style={{ width: `${stats.total > 0 ? (stats.respondedCount / stats.total) * 100 : 0}%` }}>
+                            <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg transition-all duration-1000 ml-1" style={{ width: `${stats.total > 0 ? (stats.respondedCount / stats.total) * 100 : 0}%` }} title={`Responded: ${stats.respondedCount}`}>
                                 {stats.total > 0 && (stats.respondedCount / stats.total) * 100 > 10 ? `${Math.round((stats.respondedCount / stats.total) * 100)}%` : ''}
                             </div>
                         </div>
@@ -246,10 +246,10 @@ export const FreshdeskPulse: React.FC<FreshdeskPulseProps> = ({ activities, onMe
                             </div>
                         </div>
                         <div className="w-full h-14 bg-slate-200 rounded-2xl overflow-hidden flex shadow-inner p-1.5">
-                            <div className="h-full bg-gradient-to-r from-orange-600 to-orange-500 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg transition-all duration-1000" style={{ width: `${stats.total > 0 ? (stats.requesterLastCount / stats.total) * 100 : 0}%` }}>
+                            <div className="h-full bg-gradient-to-r from-orange-600 to-orange-500 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg transition-all duration-1000" style={{ width: `${stats.total > 0 ? (stats.requesterLastCount / stats.total) * 100 : 0}%` }} title={`Requester Last: ${stats.requesterLastCount}`}>
                                 {stats.total > 0 && (stats.requesterLastCount / stats.total) * 100 > 10 ? `${Math.round((stats.requesterLastCount / stats.total) * 100)}%` : ''}
                             </div>
-                            <div className="h-full bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg transition-all duration-1000 ml-1" style={{ width: `${stats.total > 0 ? (stats.agentLastCount / stats.total) * 100 : 0}%` }}>
+                            <div className="h-full bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg transition-all duration-1000 ml-1" style={{ width: `${stats.total > 0 ? (stats.agentLastCount / stats.total) * 100 : 0}%` }} title={`Agent Last: ${stats.agentLastCount}`}>
                                 {stats.total > 0 && (stats.agentLastCount / stats.total) * 100 > 10 ? `${Math.round((stats.agentLastCount / stats.total) * 100)}%` : ''}
                             </div>
                         </div>
@@ -309,7 +309,7 @@ export const FreshdeskPulse: React.FC<FreshdeskPulseProps> = ({ activities, onMe
                                     }
                                 },
                                 plugins: { legend: { onClick: () => {}, position: 'bottom', labels: { color: '#475569', font: { weight: 'bold', size: 10 }, usePointStyle: true, padding: 20 } }, datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, formatter: (value) => value > 0 ? value : '' } as any }, 
-                                scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b', font: { weight: 'bold', size: 10 } } }, y: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b', font: { weight: 'bold', size: 10 } } } } 
+                                scales: { x: { stacked: false, grid: { display: false }, ticks: { color: '#64748b', font: { weight: 'bold', size: 10 } } }, y: { stacked: false, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b', font: { weight: 'bold', size: 10 } } } } 
                             }} 
                         />
                     </div>

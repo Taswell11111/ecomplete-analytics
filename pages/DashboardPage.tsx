@@ -84,6 +84,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isReportVisible, setIsReportVisible] = useState(false);
   const [isRegeneratingInsight, setIsRegeneratingInsight] = useState(false);
   
+  // Synopsis loading state
+  const [synopsisElapsedTime, setSynopsisElapsedTime] = useState(0);
+  const [synopsisLogs, setSynopsisLogs] = useState<string[]>(['Initialising synopsis...']);
+
+  useEffect(() => {
+    let interval: any;
+    if (isGeneratingAudio) {
+      interval = setInterval(() => {
+        setSynopsisElapsedTime(prev => prev + 1);
+        if (synopsisElapsedTime % 5 === 0) {
+          setSynopsisLogs(prev => [`Log: Processing data point ${Math.floor(Math.random() * 100)}...`, ...prev].slice(0, 3));
+        }
+      }, 1000);
+    } else {
+      setSynopsisElapsedTime(0);
+      setSynopsisLogs(['Initialising synopsis...']);
+    }
+    return () => clearInterval(interval);
+  }, [isGeneratingAudio, synopsisElapsedTime]);
+
   // UI State
   const [isLoading, setIsLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
@@ -102,17 +122,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
 
   const handleReadSummary = async () => {
-    if (!executiveSummary) return;
-    if (audioBase64) {
-      if (isPlayingAudio) {
-        onPauseAudio();
-      } else {
-        onPlayAudio(audioBase64);
-      }
+    if (!executiveSummary) {
+      handleFetchActivity();
       return;
     }
     
+    if (isPlayingAudio) {
+      onPauseAudio();
+      return;
+    }
+
+    if (audioBase64) {
+      onPlayAudio(audioBase64);
+      return;
+    }
+    
+    // Update state to indicate processing
     onSetIsGeneratingAudio(true);
+    setSynopsisLogs(['Generating audio briefing...']);
+    
     try {
       const wavBase64 = await generateSpeech(executiveSummary);
       if (wavBase64) {
@@ -121,6 +149,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }
     } catch (error) {
       console.error("Failed to generate speech:", error);
+      setSynopsisLogs(prev => [...prev, 'Error generating audio briefing.']);
     } finally {
       onSetIsGeneratingAudio(false);
     }
@@ -307,6 +336,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
                 });
                 
+                // Scale counts to reflect actual volume
+                Object.keys(urgencyCounts).forEach(k => {
+                    urgencyCounts[k] = Math.round(urgencyCounts[k] * scaleFactor);
+                });
+                Object.keys(categoryCounts).forEach(k => {
+                    categoryCounts[k] = Math.round(categoryCounts[k] * scaleFactor);
+                });
+                
                 if (pieChartRef.current) {
                     if (pieChartInstance.current) pieChartInstance.current.destroy();
                     pieChartInstance.current = new Chart(pieChartRef.current, { 
@@ -325,6 +362,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             cutout: '70%', 
                             responsive: true, 
                             maintainAspectRatio: false, 
+                            onClick: (e: any, elements: any[]) => {
+                                if (elements.length > 0) {
+                                    const index = elements[0].index;
+                                    const urgency = Object.keys(urgencyCounts)[index];
+                                    const filtered = activities.filter(a => (a.analysis?.urgency || 'LOW').toUpperCase() === urgency);
+                                    setMetricModalTitle(`Tickets: ${urgency}`);
+                                    setMetricModalTickets(filtered);
+                                    setMetricModalOpen(true);
+                                }
+                            },
                             plugins: { 
                                 legend: { display: false }, 
                                 tooltip: {
@@ -651,6 +698,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     options: { 
                         responsive: true, 
                         maintainAspectRatio: false, 
+                        onClick: (e: any, elements: any[]) => {
+                            if (elements.length > 0) {
+                                const index = elements[0].index;
+                                const hour = timelineLabels[index];
+                                const filtered = activities.filter(a => {
+                                    let date: Date | null = null;
+                                    if (timelineTab === 'created') date = new Date(a.ticket.created_at);
+                                    else if (timelineTab === 'closed') {
+                                        if (a.ticket.status === 4 || a.ticket.status === 5) date = new Date(a.ticket.updated_at);
+                                    } else date = new Date(a.ticket.updated_at);
+                                    return date && format(date, 'HH:mm') === hour;
+                                });
+                                setMetricModalTitle(`Tickets at ${hour}`);
+                                setMetricModalTickets(filtered);
+                                setMetricModalOpen(true);
+                            }
+                        },
                         plugins: { 
                             legend: { 
                                 display: true, 
@@ -715,6 +779,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         responsive: true,
                         maintainAspectRatio: false,
                         cutout: '75%',
+                        onClick: (e: any, elements: any[]) => {
+                            if (elements.length > 0) {
+                                const index = elements[0].index;
+                                const brandName = labels[index];
+                                const filtered = pulseActivities.filter(a => (a.brandName || '').replace(' Online South Africa', '') === brandName);
+                                setMetricModalTitle(`Tickets: ${brandName}`);
+                                setMetricModalTickets(filtered);
+                                setMetricModalOpen(true);
+                            }
+                        },
                         plugins: {
                             legend: { display: false },
                             tooltip: {
@@ -820,6 +894,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         }
         
         let count = ticketScope === 'all' ? m.activeTickets : Math.ceil(m.activeTickets * (parseInt(ticketScope)/100));
+        count = Math.max(count, 10);
         count = Math.min(count, 300);
         
         let groupQueryPart = `group_id:${selectedGroup.id}`;
@@ -841,6 +916,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 const groupName = ECOMPLETE_GROUPS.find(g => g.id === groupId)?.name || 'Unknown Brand';
                 const groupActiveCount = localGroupCounts.find(g => g.id === groupId)?.count || 0;
                 let groupCount = ticketScope === 'all' ? groupActiveCount : Math.ceil(groupActiveCount * (parseInt(ticketScope)/100));
+                groupCount = Math.max(groupCount, 10);
                 groupCount = Math.min(groupCount, 60); // Cap per group
                 
                 const groupQuery = `group_id:${groupId} AND (${activeStatusString})`;
@@ -882,6 +958,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 const groupName = ECOMPLETE_GROUPS.find(g => g.id === groupId)?.name || 'Unknown Brand';
                 const groupActiveCount = localGroupCounts.find(g => g.id === groupId)?.count || 0;
                 let groupCount = ticketScope === 'all' ? groupActiveCount : Math.ceil(groupActiveCount * (parseInt(ticketScope)/100));
+                groupCount = Math.max(groupCount, 10);
                 groupCount = Math.min(groupCount, 60); // Cap per group
                 
                 const groupQuery = `group_id:${groupId} AND (${activeStatusString})`;
@@ -964,7 +1041,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             const audioWav = await generateSpeech(summary);
             if (audioWav) {
                 onSetAudioBase64(audioWav);
-                // Don't play immediately, let the useEffect handle it when report is visible
+                onPlayAudio(audioWav); // Auto-play
             }
         } catch (e) {
             console.error("Audio briefing generation failed", e);
@@ -1216,7 +1293,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const getUrgencyCountScaled = (urgency: string) => { 
       let count = 0; activities.forEach(a => { if (a.analysis.urgency.toUpperCase() === urgency.toUpperCase()) count++; }); 
-      return count; 
+      const scaleFactor = (activities.length > 0 && displayMetrics.activeTickets > activities.length) ? displayMetrics.activeTickets / activities.length : 1;
+      return Math.round(count * scaleFactor); 
   };
 
   const handleDownloadReport = () => { 
@@ -1236,15 +1314,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="sticky top-0 bg-ecomplete-primary border-b border-slate-700/50 z-40 h-20 lg:h-24 flex items-stretch px-0 shadow-xl overflow-visible">
+      <header className="sticky top-0 bg-gradient-to-r from-slate-900 via-ecomplete-primary to-slate-900 border-b border-white/10 z-40 h-28 lg:h-32 flex items-stretch px-0 shadow-2xl overflow-visible">
           <div className="flex items-center pl-6 lg:pl-12 flex-1 min-w-0">
               <div className="shrink-0 mr-4 lg:mr-12">
-                  <h1 className="text-lg lg:text-2xl font-black text-white tracking-tighter uppercase flex items-center gap-2 lg:gap-3">
-                      <BarChart3 className="text-ecomplete-accent shrink-0" size={20} />
-                      <span className="truncate">Support Intelligence</span>
-                      <span className="hidden sm:inline text-ecomplete-accent font-black text-2xl ml-4">| {appContext === 'levis' ? "LEVI'S ONLINE" : "BOUNTY APPAREL"}</span>
-                      <span className="hidden sm:inline text-white/40 font-bold text-xs ml-4 uppercase tracking-widest mt-1">Session Initialised: {new Date().toLocaleString()}</span>
-                  </h1>
+                  <div className="flex flex-col">
+                      <h1 className="text-lg lg:text-2xl font-bold text-white tracking-tighter flex items-center gap-2 lg:gap-3">
+                          <BarChart3 className="text-ecomplete-accent shrink-0" size={20} />
+                          <span className="truncate">Support Intelligence</span>
+                      </h1>
+                      <div className="flex items-center gap-4 mt-1">
+                          <span className="hidden sm:inline text-ecomplete-accent font-bold text-2xl">| {appContext === 'levis' ? "Levi's Online" : "Bounty Apparel"}</span>
+                          <span className="hidden sm:inline text-white/40 font-semibold text-xs tracking-widest">Session Initialised: {new Date().toLocaleString()}</span>
+                      </div>
+                  </div>
               </div>
           </div>
 
@@ -1271,7 +1353,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <button onClick={handleFetchActivity} disabled={isLoading} className={`bg-ecomplete-accent text-slate-900 px-6 lg:px-12 h-full font-black flex flex-col items-center justify-center gap-1 lg:gap-2 shadow-[inset_-4px_0_10px_rgba(255,255,255,0.3),0_0_40px_-5px_#FFEB00] uppercase tracking-[0.2em] hover:bg-yellow-400 transition-all text-[9px] lg:text-[11px] shrink-0 rounded-none border-x border-yellow-500 relative group ${isGeneratingAudio || isPlayingAudio ? 'animate-pulse ring-4 ring-white/50' : ''}`}>
                   <div className="absolute top-0 left-0 w-2 h-full bg-white opacity-50 group-hover:opacity-100 transition-opacity shadow-[0_0_15px_#ffffff]"></div>
                   {isLoading ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} className="group-hover:rotate-180 transition-transform duration-700" />} 
-                  <span className="text-center whitespace-nowrap uppercase tracking-widest leading-tight">Fetch<br/>Intel</span>
+                  <span className="text-center whitespace-nowrap uppercase tracking-widest leading-tight">Initiate<br/>Freshdesk<br/>Analysis</span>
               </button>
 
               <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden flex items-center justify-center px-6 h-full text-white hover:bg-white/10 transition-colors">
@@ -1348,79 +1430,108 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           )}
 
           {(!displayMetrics || !isReportVisible) && !isLoading && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-[70vh] flex flex-col justify-center pt-20">
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-[70vh] flex flex-col pt-20">
                   <div className="max-w-[1600px] mx-auto w-full px-8">
-                      <div className="text-center mb-20 space-y-6">
-                          <div className="inline-flex items-center gap-3 bg-slate-900 text-white px-6 py-2 rounded-full text-[10px] font-black tracking-[0.4em] uppercase shadow-2xl">
-                              Freshdesk Support Intelligence Guide
-                          </div>
-                          <h2 className="text-5xl lg:text-7xl font-black text-slate-900 tracking-tighter leading-none uppercase">
-                              The <span className="text-ecomplete-primary">Support</span> <br/>
-                              Framework
-                          </h2>
-                          <p className="text-slate-400 text-sm font-bold uppercase tracking-[0.2em] max-w-2xl mx-auto opacity-60">
-                              Advanced heuristics and generative analysis protocols for support ecosystem oversight
-                          </p>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12 mb-16">
-                          <div className="bg-white p-12 lg:p-14 rounded-[3.5rem] border border-slate-100 shadow-[0_30px_60px_rgba(0,0,0,0.03)] hover:shadow-[0_50px_100px_rgba(0,0,0,0.08)] hover:-translate-y-3 transition-all duration-700 group cursor-default">
-                              <div className="w-16 h-16 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 mb-10 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-sm"> <Layers size={32} /> </div>
-                              <h3 className="font-black text-slate-900 text-2xl mb-6 uppercase tracking-tight">Insight Scope</h3>
-                              <ul className="space-y-5 text-sm text-slate-500 font-bold leading-relaxed"> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-blue-400 shrink-0 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                                      <span className="flex-1">Comprehensive analysis of Freshdesk support tickets.</span>
-                                  </li> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-blue-400 shrink-0 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                                      <span className="flex-1"><strong>Consolidated Views</strong> for customer query ecosystems.</span>
-                                  </li> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-blue-400 shrink-0 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                                      <span className="flex-1">Supports granular filtering by brand and business unit.</span>
-                                  </li> 
-                              </ul>
-                          </div>
-                          <div className="bg-white p-12 lg:p-14 rounded-[3.5rem] border border-slate-100 shadow-[0_30px_60px_rgba(0,0,0,0.03)] hover:shadow-[0_50px_100px_rgba(0,0,0,0.08)] hover:-translate-y-3 transition-all duration-700 group cursor-default">
-                              <div className="w-16 h-16 bg-emerald-50 rounded-[2rem] flex items-center justify-center text-emerald-600 mb-10 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500 shadow-sm"> <Zap size={32} /> </div>
-                              <h3 className="font-black text-slate-900 text-2xl mb-6 uppercase tracking-tight">Operational Sampling</h3>
-                              <ul className="space-y-5 text-sm text-slate-500 font-bold leading-relaxed"> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                                      <span className="flex-1">AI-driven sampling of active customer queries.</span>
-                                  </li> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                                      <span className="flex-1">Analyses recent interactions to identify customer service trends.</span>
-                                  </li> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                                      <span className="flex-1"><span className="text-emerald-600 font-bold">Flexible:</span> Adjustable sample size (25% - 100%).</span>
-                                  </li> 
-                              </ul>
-                          </div>
-                          <div className="bg-white p-12 lg:p-14 rounded-[3.5rem] border border-slate-100 shadow-[0_30px_60px_rgba(0,0,0,0.03)] hover:shadow-[0_50px_100px_rgba(0,0,0,0.08)] hover:-translate-y-3 transition-all duration-700 group cursor-default">
-                              <div className="w-16 h-16 bg-purple-50 rounded-[2rem] flex items-center justify-center text-purple-600 mb-10 group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all duration-500 shadow-sm"> <Share2 size={32} /> </div>
-                              <h3 className="font-black text-slate-900 text-2xl mb-6 uppercase tracking-tight">Report Distribution</h3>
-                              <ul className="space-y-5 text-sm text-slate-500 font-bold leading-relaxed"> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-purple-400 shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
-                                      <span className="flex-1">Shareable Executive Synopsis via secure link.</span>
-                                  </li> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-purple-400 shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
-                                      <span className="flex-1">Downloadable <strong>HTML Reports</strong> with charts.</span>
-                                  </li> 
-                                  <li className="flex items-start gap-4">
-                                      <div className="w-2 h-2 mt-2 rounded-full bg-purple-400 shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
-                                      <span className="flex-1">Audio briefings for on-the-go updates.</span>
-                                  </li> 
-                              </ul>
+                      {/* Primary Hero: Executive Intelligence Insight */}
+                      <div className="bg-gradient-to-br from-slate-900 via-ecomplete-primary to-slate-900 text-white rounded-[2.5rem] p-12 mb-8 shadow-2xl relative overflow-hidden border border-white/10">
+                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
+                          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
+                          
+                          <div className="relative z-10">
+                              <h2 className="text-4xl font-black uppercase tracking-tight mb-6 text-white flex items-center gap-4">
+                                  <Zap className="text-ecomplete-accent" size={36} />
+                                  EXECUTIVE INTELLIGENCE INSIGHT
+                              </h2>
+                              <p className="text-xl font-medium leading-relaxed mb-8 text-slate-300 max-w-4xl">
+                                  {executiveSummary || "System idle. Initiate Freshdesk Analysis to generate executive insights and audio briefing."}
+                              </p>
+                              
+                              {!isAnalysisComplete ? (
+                                  <>
+                                      <button 
+                                          onClick={handleReadSummary}
+                                          disabled={isGeneratingAudio || isLoading}
+                                          className={`flex items-center gap-3 px-10 py-5 rounded-2xl transition-all font-black text-sm uppercase tracking-widest relative overflow-hidden shadow-xl ${isGeneratingAudio || isLoading ? 'bg-white/10 text-white/50 cursor-not-allowed' : isPlayingAudio ? 'bg-ecomplete-accent text-slate-900 shadow-ecomplete-accent/20' : 'bg-ecomplete-accent text-slate-900 hover:bg-yellow-400 shadow-ecomplete-accent/20'}`}
+                                      >
+                                          {isGeneratingAudio || isLoading ? <Loader2 size={20} className="animate-spin" /> : isPlayingAudio ? <PauseCircle size={20} /> : <Volume2 size={20} />}
+                                          <span>
+                                              {isGeneratingAudio || isLoading ? 'Processing...' : isPlayingAudio ? 'Pause Briefing' : !executiveSummary ? 'Initiate Analysis' : 'Audio Briefing'}
+                                          </span>
+                                      </button>
+                                      {(isGeneratingAudio || isLoading) && synopsisElapsedTime > 30 && (
+                                          <div className="text-ecomplete-accent text-[10px] mt-4 font-bold animate-pulse uppercase tracking-widest">Warning: Briefing generation is taking longer than expected.</div>
+                                      )}
+                                      {(isGeneratingAudio || isLoading) && (
+                                          <div className="mt-4 font-mono text-[10px] text-slate-400 uppercase tracking-widest">
+                                              {synopsisLogs.map((log, i) => <div key={i}>{log}</div>)}
+                                          </div>
+                                      )}
+                                  </>
+                              ) : (
+                                  <div className="space-y-8">
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                          {[
+                                              { label: 'Total Tickets', value: displayMetrics?.totalTickets || 0 },
+                                              { label: 'Avg Response', value: displayMetrics?.avgResponseTime || '0h' },
+                                              { label: 'Sentiment', value: displayMetrics?.avgSentiment ? `${displayMetrics.avgSentiment}%` : '0%' },
+                                              { label: 'Risk Score', value: displayMetrics?.riskScore ? `${displayMetrics.riskScore}%` : '0%' },
+                                              { label: 'Resolved', value: displayMetrics?.resolvedTickets || 0 },
+                                              { label: 'Pending', value: displayMetrics?.pendingTickets || 0 },
+                                              { label: 'Escalated', value: displayMetrics?.escalatedTickets || 0 },
+                                              { label: 'Active', value: displayMetrics?.activeTickets || 0 }
+                                          ].map((metric, i) => (
+                                              <div key={i} className="bg-white/5 p-6 rounded-2xl border border-white/10 shadow-inner backdrop-blur-sm">
+                                                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{metric.label}</div>
+                                                  <div className="text-3xl font-black text-white">{metric.value}</div>
+                                              </div>
+                                          ))}
+                                      </div>
+                                      <div className="flex items-center gap-4">
+                                          <button 
+                                              onClick={handleReadSummary}
+                                              disabled={isGeneratingAudio}
+                                              className={`flex items-center gap-3 px-10 py-5 rounded-2xl transition-all font-black text-sm uppercase tracking-widest shadow-xl ${isGeneratingAudio ? 'bg-white/10 text-white/50 cursor-not-allowed' : isPlayingAudio ? 'bg-ecomplete-accent text-slate-900 shadow-ecomplete-accent/20' : 'bg-ecomplete-accent text-slate-900 hover:bg-yellow-400 shadow-ecomplete-accent/20'}`}
+                                          >
+                                              {isGeneratingAudio ? <Loader2 size={20} className="animate-spin" /> : isPlayingAudio ? <PauseCircle size={20} /> : <Volume2 size={20} />}
+                                              <span>{isGeneratingAudio ? 'Processing...' : isPlayingAudio ? 'Pause Briefing' : 'Audio Briefing'}</span>
+                                          </button>
+                                          <button 
+                                              onClick={() => setIsReportVisible(true)}
+                                              className="flex-1 py-5 bg-white/10 text-white border border-white/20 font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-white/20 transition-all shadow-lg text-center"
+                                          >
+                                              Access Detailed eCompleteCommerce Analysis Report
+                                          </button>
+                                      </div>
+                                  </div>
+                              )}
                           </div>
                       </div>
 
-                      <div className="flex justify-center">
+                      {/* Flash Metrics */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+                          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Active Queue</div>
+                              <div className="text-3xl font-black text-slate-900">{displayMetrics?.activeTickets || 0}</div>
+                          </div>
+                          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Brand Risk %</div>
+                              <div className="text-3xl font-black text-slate-900">2.4%</div>
+                          </div>
+                          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Sentiment %</div>
+                              <div className="text-3xl font-black text-slate-900">88%</div>
+                          </div>
+                          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Avg Response Time</div>
+                              <div className="text-3xl font-black text-slate-900">42m</div>
+                          </div>
+                      </div>
+
+                      {/* Framework (Guide) - Dismissible */}
+                      <div className="text-center">
+                           <button className="text-slate-400 font-bold uppercase text-xs tracking-widest hover:text-slate-900 transition-colors">
+                               View Framework Definitions
+                           </button>
                       </div>
                   </div>
               </div>
@@ -1438,12 +1549,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <div className="absolute top-4 right-4 lg:top-6 lg:right-6 flex flex-col gap-3 z-10">
                               <button 
                                   onClick={handleReadSummary}
-                                  disabled={isGeneratingAudio || !executiveSummary}
+                                  disabled={isGeneratingAudio || isLoading}
                                   className={`flex items-center gap-2 px-4 lg:px-6 py-2 lg:py-3 rounded-xl transition-all font-black text-[9px] lg:text-[10px] uppercase tracking-widest shadow-lg h-[38px] lg:h-[42px] ${isPlayingAudio ? 'bg-ecomplete-accent text-slate-900 ring-4 ring-ecomplete-accent/20' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                               >
                                   {isGeneratingAudio ? <Loader2 size={14} className="animate-spin" /> : isPlayingAudio ? <PauseCircle size={14} /> : <Volume2 size={14} />}
-                                  <span className="hidden sm:inline">{isGeneratingAudio ? 'Synthesizing...' : isPlayingAudio ? 'Pause Briefing' : 'Audio Briefing'}</span>
-                                  <span className="sm:hidden">{isPlayingAudio ? 'Pause' : 'Audio'}</span>
+                                  <span className="hidden sm:inline">{isGeneratingAudio ? 'Synthesizing...' : isPlayingAudio ? 'Pause Briefing' : !executiveSummary ? 'Initiate Analysis' : 'Audio Briefing'}</span>
+                                  <span className="sm:hidden">{isPlayingAudio ? 'Pause' : !executiveSummary ? 'Analyze' : 'Audio'}</span>
                               </button>
                               <button 
                                   onClick={() => setIsLiveConsoleOpen(true)}
@@ -1457,7 +1568,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </div>
                           <div className="absolute top-0 left-0 w-full h-4 bg-ecomplete-accent"></div>
                           
-                          <h2 className="text-sm lg:text-xl font-black text-slate-400 uppercase tracking-[0.4em] mt-8 mb-8 text-center group-hover:text-ecomplete-primary transition-colors w-full">Total Active Ticket Queue</h2>
+                          <h2 className="text-sm lg:text-xl font-black text-slate-400 uppercase tracking-[0.4em] mt-8 mb-16 text-center group-hover:text-ecomplete-primary transition-colors w-full">Total Active Ticket Queue</h2>
                           <div className="flex flex-col lg:flex-row items-center justify-center w-full gap-16 lg:gap-24">
                               <div className="flex flex-col items-center text-center">
                                   <div className={`text-7xl md:text-8xl lg:text-9xl leading-none font-black text-[#FFEB00] tracking-tighter group-hover:scale-105 transition-transform duration-700 drop-shadow-[0_0_15px_rgba(255,235,0,0.3)] ${highlightedSection === 'queue' ? 'ring-8 ring-ecomplete-accent ring-offset-8 rounded-3xl animate-pulse' : ''}`} style={{ WebkitTextStroke: '1px black', textShadow: '2px 2px 0px rgba(0,0,0,0.1)' }}>{displayMetrics.activeTickets}</div>
@@ -1498,9 +1609,83 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </div>
 
                           <div className={`mt-12 pt-8 border-t border-slate-100 max-w-5xl mx-auto text-center transition-all duration-500 ${highlightedSection === 'backlog' ? 'bg-ecomplete-accent/10 rounded-[2rem] p-8 -mx-8 ring-2 ring-ecomplete-accent' : ''}`}>
-                              <h3 className="text-xs font-black text-slate-800 uppercase tracking-[0.3em] mb-8 flex items-center gap-2 justify-center">Historical Backlog Matrix (Active Queue Volume) {isFetchingBacklog && <Loader2 size={14} className="animate-spin text-ecomplete-primary" />}</h3>
+                              <h3 className="text-xs font-black text-slate-800 uppercase tracking-[0.3em] mb-8 flex items-center gap-2 justify-center">Active Queue Volume over time {isFetchingBacklog && <Loader2 size={14} className="animate-spin text-ecomplete-primary" />}</h3>
                               <div className="h-[250px] w-full relative"><canvas ref={agingChartRef}></canvas></div>
                               <p className="text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold h-6">{backlogChartSubtitle}</p>
+                          </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                          <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-lg flex flex-col hover:shadow-2xl transition-all duration-500">
+                              <h3 className="font-black text-slate-800 uppercase text-3xl tracking-tight mb-8 pb-4 border-b border-slate-50">Urgency Profile</h3>
+                              <div className="h-[220px] relative w-full overflow-x-auto overflow-y-hidden touch-pan-x">
+                                  <canvas 
+                                      ref={pieChartRef}
+                                      onClick={(e) => {
+                                          if (!pieChartInstance.current || !pieChartRef.current) return;
+                                          const points = pieChartInstance.current.getElementsAtEventForMode(e.nativeEvent, 'nearest', { intersect: true }, true);
+                                          if (points.length > 0) {
+                                              const index = points[0].index;
+                                              const urgency = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'][index];
+                                              setMetricModalTitle(`Tickets: ${urgency} Urgency`);
+                                              setMetricModalTickets(activities.filter(a => a.analysis.urgency.toUpperCase() === urgency));
+                                              setMetricModalOpen(true);
+                                          }
+                                      }}
+                                  ></canvas>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2.5 mt-8"> {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(u => { 
+                                  const count = getUrgencyCountScaled(u); 
+                                  const rawCount = activities.filter(a => a.analysis.urgency.toUpperCase() === u).length;
+                                  const totalRaw = activities.length;
+                                  const perc = totalRaw > 0 ? Math.round((rawCount / totalRaw) * 100) : 0;
+                                  return ( 
+                                  <div key={u} className={`flex items-center justify-between px-4 py-4 rounded-2xl border text-[14px] font-black transition-all duration-300 bg-slate-50 border-slate-100`}> 
+                                      <span className={u === 'CRITICAL' ? 'text-red-500' : u === 'HIGH' ? 'text-orange-500' : u === 'MEDIUM' ? 'text-yellow-500' : 'text-green-500'}>
+                                          {u} <span className="opacity-50 ml-2">[{count}]</span>
+                                      </span> 
+                                      <div className="flex items-center gap-3">
+                                          <span className="text-[10px] opacity-60">{perc}%</span>
+                                          <div className={`w-2.5 h-2.5 rounded-full shadow-inner transition-all duration-500 bg-slate-300`}></div> 
+                                      </div>
+                                  </div> 
+                              ); })} </div>
+                          </div>
+                          <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-lg flex flex-col hover:shadow-2xl transition-all duration-500">
+                              <h3 className="font-black text-slate-800 uppercase text-3xl tracking-tight mb-8 pb-4 border-b border-slate-50">Category Matrix</h3>
+                              <div className="h-[220px] relative w-full overflow-x-auto overflow-y-hidden touch-pan-x">
+                                  <canvas 
+                                      ref={barChartRef}
+                                      onClick={(e) => {
+                                          if (!barChartInstance.current || !barChartRef.current) return;
+                                          const points = barChartInstance.current.getElementsAtEventForMode(e.nativeEvent, 'nearest', { intersect: true }, true);
+                                          if (points.length > 0) {
+                                              const index = points[0].index;
+                                              const category = barChartInstance.current.data.labels[index];
+                                              setMetricModalTitle(`Tickets: ${category}`);
+                                              setMetricModalTickets(activities.filter(a => a.analysis.category === category));
+                                              setMetricModalOpen(true);
+                                          }
+                                      }}
+                                  ></canvas>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mt-8"> {(() => { 
+                                  const counts: {[key: string]: number} = {}; 
+                                  activities.forEach(a => counts[a.analysis.category] = (counts[a.analysis.category] || 0) + 1); 
+                                  const sampleSize = activities.length; 
+                                  const scaleFactor = (sampleSize > 0 && displayMetrics.activeTickets > sampleSize) ? displayMetrics.activeTickets / sampleSize : 1;
+                                  return Object.keys(counts).sort((a,b) => counts[b] - counts[a]).slice(0, 6).map(cat => { 
+                                      const scaledCount = Math.round(counts[cat] * scaleFactor); 
+                                      const perc = sampleSize > 0 ? Math.round((counts[cat] / sampleSize) * 100) : 0;
+                                      return ( 
+                                      <div key={cat} className={`flex items-center justify-between px-4 py-4 rounded-2xl border text-[14px] font-black transition-all duration-300 bg-slate-50 border-slate-100`} style={{ color: getCategoryColor(cat) }}> 
+                                          <span>{cat} <span className="opacity-50 ml-2">[{scaledCount}]</span></span> 
+                                          <div className="flex items-center gap-3">
+                                              <span className="text-[10px] opacity-60">{perc}%</span>
+                                              <div className={`w-2.5 h-2.5 rounded-full shadow-inner transition-all duration-500 bg-slate-300`}></div> 
+                                          </div>
+                                      </div> 
+                                  )}); })()} </div>
                           </div>
                       </div>
 
@@ -1517,7 +1702,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <div className="flex flex-col gap-6 group">
                               <div className="flex justify-between items-end">
                                   <div>
-                                      <span className="text-xl font-black text-slate-800 uppercase tracking-[0.3em] block mb-2">Brand Health Risk Threshold</span>
+                                      <span className="font-black text-slate-800 uppercase text-3xl tracking-tighter mb-2 block whitespace-nowrap">Brand Health Risk Threshold</span>
                                       <span className="text-sm font-medium text-slate-400 italic tracking-wide block max-w-sm leading-relaxed">Evaluates the risk of customer attrition based on service failure points</span>
                                   </div>
                                   <span className={`text-6xl font-black ${(() => {
@@ -1608,79 +1793,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   }}
                               />
                           </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                              <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-lg flex flex-col hover:shadow-2xl transition-all duration-500">
-                                  <h3 className="font-black text-slate-800 uppercase text-3xl tracking-tight mb-8 pb-4 border-b border-slate-50">Urgency Profile</h3>
-                                  <div className="h-[220px] relative w-full overflow-x-auto overflow-y-hidden touch-pan-x">
-                                      <canvas 
-                                          ref={pieChartRef}
-                                          onClick={(e) => {
-                                              if (!pieChartInstance.current || !pieChartRef.current) return;
-                                              const points = pieChartInstance.current.getElementsAtEventForMode(e.nativeEvent, 'nearest', { intersect: true }, true);
-                                              if (points.length > 0) {
-                                                  const index = points[0].index;
-                                                  const urgency = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'][index];
-                                                  setMetricModalTitle(`Tickets: ${urgency} Urgency`);
-                                                  setMetricModalTickets(activities.filter(a => a.analysis.urgency.toUpperCase() === urgency));
-                                                  setMetricModalOpen(true);
-                                              }
-                                          }}
-                                      ></canvas>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2.5 mt-8"> {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(u => { 
-                                      const count = getUrgencyCountScaled(u); 
-                                      const rawCount = activities.filter(a => a.analysis.urgency.toUpperCase() === u).length;
-                                      const totalRaw = activities.length;
-                                      const perc = totalRaw > 0 ? Math.round((rawCount / totalRaw) * 100) : 0;
-                                      return ( 
-                                      <div key={u} className={`flex items-center justify-between px-4 py-4 rounded-2xl border text-[14px] font-black transition-all duration-300 bg-slate-50 border-slate-100`}> 
-                                          <span className={u === 'CRITICAL' ? 'text-red-500' : u === 'HIGH' ? 'text-orange-500' : u === 'MEDIUM' ? 'text-yellow-500' : 'text-green-500'}>
-                                              {u} <span className="opacity-50 ml-2">[{count}]</span>
-                                          </span> 
-                                          <div className="flex items-center gap-3">
-                                              <span className="text-[10px] opacity-60">{perc}%</span>
-                                              <div className={`w-2.5 h-2.5 rounded-full shadow-inner transition-all duration-500 bg-slate-300`}></div> 
-                                          </div>
-                                      </div> 
-                                  ); })} </div>
-                              </div>
-                              <div className="bg-white p-6 rounded-[3rem] border border-slate-200 shadow-lg flex flex-col hover:shadow-2xl transition-all duration-500">
-                                  <h3 className="font-black text-slate-800 uppercase text-3xl tracking-tight mb-8 pb-4 border-b border-slate-50">Category Matrix</h3>
-                                  <div className="h-[220px] relative w-full overflow-x-auto overflow-y-hidden touch-pan-x">
-                                      <canvas 
-                                          ref={barChartRef}
-                                          onClick={(e) => {
-                                              if (!barChartInstance.current || !barChartRef.current) return;
-                                              const points = barChartInstance.current.getElementsAtEventForMode(e.nativeEvent, 'nearest', { intersect: true }, true);
-                                              if (points.length > 0) {
-                                                  const index = points[0].index;
-                                                  const category = barChartInstance.current.data.labels[index];
-                                                  setMetricModalTitle(`Tickets: ${category}`);
-                                                  setMetricModalTickets(activities.filter(a => a.analysis.category === category));
-                                                  setMetricModalOpen(true);
-                                              }
-                                          }}
-                                      ></canvas>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 mt-8"> {(() => { 
-                                      const counts: {[key: string]: number} = {}; 
-                                      activities.forEach(a => counts[a.analysis.category] = (counts[a.analysis.category] || 0) + 1); 
-                                      const sampleSize = activities.length; 
-                                      return Object.keys(counts).sort((a,b) => counts[b] - counts[a]).slice(0, 6).map(cat => { 
-                                          const scaledCount = counts[cat]; 
-                                          const perc = sampleSize > 0 ? Math.round((counts[cat] / sampleSize) * 100) : 0;
-                                          return ( 
-                                          <div key={cat} className={`flex items-center justify-between px-4 py-4 rounded-2xl border text-[14px] font-black transition-all duration-300 bg-slate-50 border-slate-100`} style={{ color: getCategoryColor(cat) }}> 
-                                              <span>{cat} <span className="opacity-50 ml-2">[{scaledCount}]</span></span> 
-                                              <div className="flex items-center gap-3">
-                                                  <span className="text-[10px] opacity-60">{perc}%</span>
-                                                  <div className={`w-2.5 h-2.5 rounded-full shadow-inner transition-all duration-500 bg-slate-300`}></div> 
-                                              </div>
-                                          </div> 
-                                      )}); })()} </div>
-                              </div>
-                          </div>
                           
                           <div className="w-full">
                               <div className="bg-white rounded-[3.5rem] border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
@@ -1745,13 +1857,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   </th>
                                                   <th className="px-4 py-3 border-b border-slate-100 w-2/5">
                                                     <div className="flex flex-col gap-2">
-                                                        <span>Subject / Summary</span>
+                                                        <span className="cursor-pointer hover:text-ecomplete-primary" onClick={() => requestSort('ticket.subject')}>Subject / Summary</span>
                                                         <input type="text" value={tableFilters.subject} onChange={e => setTableFilters(prev => ({...prev, subject: e.target.value}))} className="bg-white border border-slate-200 rounded-lg px-2 py-1 w-full text-[8px] font-bold outline-none focus:border-ecomplete-primary" placeholder="Search subject..." />
                                                     </div>
                                                   </th>
                                                   <th className="px-4 py-3 border-b border-slate-100">
                                                     <div className="flex flex-col gap-2">
-                                                        <span>Category</span>
+                                                        <span className="cursor-pointer hover:text-ecomplete-primary" onClick={() => requestSort('analysis.category')}>Category</span>
                                                         <select value={tableFilters.category} onChange={e => setTableFilters(prev => ({...prev, category: e.target.value}))} className="bg-white border border-slate-200 rounded-lg px-2 py-1 w-24 text-[8px] font-bold outline-none focus:border-ecomplete-primary appearance-none cursor-pointer">
                                                             <option value="">All</option>
                                                             {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -1760,7 +1872,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   </th>
                                                   <th className="px-4 py-3 border-b border-slate-100">
                                                     <div className="flex flex-col gap-2">
-                                                        <span>Brand</span>
+                                                        <span className="cursor-pointer hover:text-ecomplete-primary" onClick={() => requestSort('brandName')}>Brand</span>
                                                         <select value={tableFilters.brand} onChange={e => setTableFilters(prev => ({...prev, brand: e.target.value}))} className="bg-white border border-slate-200 rounded-lg px-2 py-1 w-24 text-[8px] font-bold outline-none focus:border-ecomplete-primary appearance-none cursor-pointer">
                                                             <option value="">All</option>
                                                             {uniqueBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
@@ -1769,14 +1881,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   </th>
                                                   <th className="px-4 py-3 border-b border-slate-100">
                                                     <div className="flex flex-col gap-2">
-                                                        <span>Status</span>
+                                                        <span className="cursor-pointer hover:text-ecomplete-primary" onClick={() => requestSort('statusName')}>Status</span>
                                                         <select value={tableFilters.status} onChange={e => setTableFilters(prev => ({...prev, status: e.target.value}))} className="bg-white border border-slate-200 rounded-lg px-2 py-1 w-20 text-[8px] font-bold outline-none focus:border-ecomplete-primary appearance-none cursor-pointer">
                                                             <option value="">All</option>
                                                             {uniqueStatuses.map(status => <option key={status} value={status}>{status}</option>)}
                                                         </select>
                                                     </div>
                                                   </th>
-                                                  <th className="px-4 py-3 border-b border-slate-100">Created</th>
+                                                  <th className="px-4 py-3 border-b border-slate-100 cursor-pointer hover:text-ecomplete-primary" onClick={() => requestSort('ticket.created_at')}>Created</th>
                                                   <th className="px-4 py-3 border-b border-slate-100">
                                                     <div className="flex flex-col gap-2">
                                                         <span className="cursor-pointer hover:text-ecomplete-primary" onClick={() => requestSort('analysis.urgency')}>Urgency</span>
@@ -1786,8 +1898,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                         </select>
                                                     </div>
                                                   </th>
-                                                  <th className="px-4 py-3 border-b border-slate-100 text-center">Risk</th>
-                                                  <th className="px-4 py-3 border-b border-slate-100 text-center">Sentiment</th>
+                                                  <th className="px-4 py-3 border-b border-slate-100 text-center cursor-pointer hover:text-ecomplete-primary" onClick={() => requestSort('riskScore')}>Risk</th>
+                                                  <th className="px-4 py-3 border-b border-slate-100 text-center cursor-pointer hover:text-ecomplete-primary" onClick={() => requestSort('sentimentScore')}>Sentiment</th>
                                               </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-100">
@@ -1814,7 +1926,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       <td className="px-4 py-2"> <span className="px-2 py-0.5 rounded-lg text-[8px] font-black uppercase text-white shadow-sm" style={{ backgroundColor: getCategoryColor(act.analysis.category) }}>{act.analysis.category}</span> </td>
                                                       <td className="px-4 py-2"> <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">{act.brandName || 'Unknown'}</span> </td>
                                                       <td className="px-4 py-2"> <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{act.statusName}</span> </td>
-                                                      <td className="px-4 py-2"> <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap">{format(new Date(act.ticket.created_at), 'dd MMM')}</span> </td>
+                                                      <td className="px-4 py-2"> <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap">{format(new Date(act.ticket.created_at), 'dd:MM:yyyy')}</span> </td>
                                                       <td className="px-4 py-2"> <span className="px-3 py-0.5 rounded-xl text-[8px] font-black uppercase text-white shadow-sm" style={{ backgroundColor: getUrgencyColor(act.analysis.urgency) }}>{act.analysis.urgency}</span> </td>
                                                       <td className="px-4 py-2 text-center font-black text-[10px] text-slate-700">{act.riskScore}%</td>
                                                       <td className="px-4 py-2 text-center font-black text-[10px] text-slate-700">{act.sentimentScore}%</td>

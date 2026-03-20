@@ -24,7 +24,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             <div className="absolute bottom-0 left-[20%] w-[600px] h-[600px] bg-[radial-gradient(circle_at_bottom_left,_rgba(15,23,42,0.6),_transparent_50%)] pointer-events-none mix-blend-screen z-0"></div>
 
             {/* Left Content Panel - Dark Luxury / Technical */}
-            <div className="hidden lg:flex w-[67%] relative flex-col justify-between p-10 border-r border-white/10 z-10 bg-black/20 backdrop-blur-sm">
+            <div className="hidden lg:flex w-[67%] relative flex-col justify-center items-center p-10 border-r border-white/10 z-10 bg-black/20 backdrop-blur-sm">
 
                 <div className="z-10">
                     <div className="flex items-center gap-6 mb-10">
@@ -38,60 +38,63 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     </div>
 
                     <div className="space-y-8 max-w-3xl mt-10">
-                        <div className="group flex gap-6 items-start">
+                        <div className="group flex gap-6 items-center">
                             <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-ecomplete-accent shrink-0 group-hover:scale-110 group-hover:bg-ecomplete-accent/10 group-hover:border-ecomplete-accent/30 transition-all duration-500 shadow-lg">
                                 <LayoutDashboard size={22}/>
                             </div>
                             <div>
                                 <h3 className="text-white font-bold text-xl mb-2 tracking-tight">Unified Support Ecosystem</h3>
-                                <div className="text-slate-400 text-sm leading-relaxed space-y-1">
-                                    <p>&gt; Deep-dive sentiment analysis and proactive risk assessment across all support channels.</p>
-                                    <p>&gt; Instantly identify bottlenecks and elevate customer satisfaction through AI-driven insights.</p>
+                                <div className="text-slate-400 text-sm leading-6 space-y-1.5">
+                                    <p className="mb-1.5">&gt; Deep-dive sentiment analysis and proactive risk assessment across all support channels.</p>
+                                    <p className="mb-1.5">&gt; Instantly identify bottlenecks and elevate customer satisfaction through AI-driven insights.</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div className="group flex gap-6 items-start">
+                        <div className="group flex gap-6 items-center">
                             <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-ecomplete-accent shrink-0 group-hover:scale-110 group-hover:bg-ecomplete-accent/10 group-hover:border-ecomplete-accent/30 transition-all duration-500 shadow-lg">
                                 <Truck size={22}/>
                             </div>
                             <div>
                                 <h3 className="text-white font-bold text-xl mb-2 tracking-tight">Logistics Synchronisation</h3>
-                                <div className="text-slate-400 text-sm leading-relaxed space-y-1">
-                                    <p>&gt; Real-time performance tracking for outbound freight and warehouse receipting accuracy.</p>
-                                    <p>&gt; Ensure seamless supply chain operations with predictive delay alerts and carrier metrics.</p>
+                                <div className="text-slate-400 text-sm leading-6 space-y-1.5">
+                                    <p className="mb-1.5">&gt; Real-time performance tracking for outbound freight and warehouse receipting accuracy.</p>
+                                    <p className="mb-1.5">&gt; Ensure seamless supply chain operations with predictive delay alerts and carrier metrics.</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div className="group flex gap-6 items-start">
+                        <div className="group flex gap-6 items-center">
                             <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-ecomplete-accent shrink-0 group-hover:scale-110 group-hover:bg-ecomplete-accent/10 group-hover:border-ecomplete-accent/30 transition-all duration-500 shadow-lg">
                                 <Undo2 size={22}/>
                             </div>
                             <div>
                                 <h3 className="text-white font-bold text-xl mb-2 tracking-tight">Returns Lifecycle</h3>
-                                <div className="text-slate-400 text-sm leading-relaxed space-y-1">
-                                    <p>&gt; A unified view of RMAs and claim processing to identify systematic friction.</p>
-                                    <p>&gt; Reduce return rates and optimise reverse logistics with comprehensive root-cause analysis.</p>
+                                <div className="text-slate-400 text-sm leading-6 space-y-1.5">
+                                    <p className="mb-1.5">&gt; A unified view of RMAs and claim processing to identify systematic friction.</p>
+                                    <p className="mb-1.5">&gt; Reduce return rates and optimise reverse logistics with comprehensive root-cause analysis.</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div className="z-10 flex items-center justify-between border-t border-white/10 pt-4 mt-10">
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-ecomplete-accent animate-pulse"></div>
-                        <span className="text-slate-400 text-xs font-medium tracking-wide">System Operational</span>
-                    </div>
-                    <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Powered by Gemini</span>
-                </div>
+               <div className="z-10 flex w-full items-center justify-between border-t border-white/10 pt-4 mt-10">
+    {/* This div will be pushed to the far LEFT */}
+    <div className="flex items-center gap-3">
+        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+        <span className="text-slate-400 text-xs font-medium tracking-wide">System Operational</span>
+    </div>
+
+    {/* This span will be pushed to the far RIGHT */}
+    <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Powered by Gemini</span>
+</div>
             </div>
 
             {/* Right Login Panel - Clean Utility */}
-            <div className="w-full lg:w-[33%] flex flex-col items-center justify-center p-6 lg:p-8 relative z-20 bg-black/40 backdrop-blur-md">
-                <div className="w-full max-w-sm space-y-4 relative z-10">
-                    <div className="text-center lg:text-left space-y-1">
+            <div className="w-full lg:w-[33%] flex flex-col items-center justify-between p-6 lg:p-8 relative z-20 bg-black/40 backdrop-blur-md min-h-screen">
+                <div className="w-full max-w-sm space-y-12 relative z-10 flex flex-col items-center flex-grow justify-center">
+                    <div className="text-center space-y-1">
                         <div className="inline-flex lg:hidden items-center gap-3 mb-4">
                             <div className="w-10 h-10 bg-ecomplete-primary rounded-lg flex items-center justify-center text-white shadow-lg">
                                 <BarChart3 size={20} />
@@ -102,12 +105,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                             </div>
                         </div>
                         
-                        <h2 className="text-xl lg:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-ecomplete-accent tracking-tight drop-shadow-sm">Instant data and reporting dashboard.</h2>
+                        <h2 className="text-2xl lg:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-ecomplete-accent tracking-tight drop-shadow-sm">Instant data and reporting dashboard</h2>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full">
                         <div className="space-y-1">
-                            <label className="text-[9px] font-medium text-slate-400 ml-1">Client Identity</label>
+                            <label className="text-[13.5px] font-medium text-slate-400 ml-1">Client Identity</label>
                             <div className="relative group">
                                 <input 
                                     type="text"
@@ -136,15 +139,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                                 {isAuthenticating ? <Loader2 className="animate-spin text-black" size={14} /> : <Lock size={14} className="text-black" />} 
                                 Access Analytics Centre
                             </button>
-                            <p className="text-[8px] text-slate-500 text-center mt-2 uppercase tracking-wider">
-                                N.B. IP addresses are taken into record upon accessing the analytics system.
-                            </p>
                         </div>
                     </div>
                 </div>
                 
-                <div className="w-full text-center pt-4 relative z-10">
-                    <span className="text-slate-400 text-[8px] font-bold uppercase tracking-widest">Confidential Property of eCompleteCommerce</span>
+                <div className="w-full text-center pt-6 relative z-10 space-y-2">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+                        N.B. IP addresses are taken into record upon accessing the analytics system.
+                    </p>
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest block">Confidential Property of eCompleteCommerce | 2026. </span>
                 </div>
             </div>
         </div>

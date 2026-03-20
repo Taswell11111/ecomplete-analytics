@@ -121,9 +121,9 @@ export const testReturnGoConnection = async (shopName: string): Promise<{ succes
 /**
  * Tests the connection to ReturnGo and fetches the most recent RMA for each store
  */
-export const testReturnGoRmas = async (): Promise<Record<string, any>> => {
+export const testReturnGoRmas = async (appContext: string): Promise<Record<string, any>> => {
     try {
-        const response = await fetch('/api/returngo/test-rmas', {
+        const response = await fetch(`/api/returngo/test-rmas?appContext=${appContext}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         });

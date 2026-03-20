@@ -11,6 +11,6 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["server.ts", "constants.ts", "types.ts"],
+  "include": ["server.ts", "constants.ts", "types.ts", "server/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

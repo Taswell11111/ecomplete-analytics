@@ -1,7 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#f97316', '#64748b'];
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#f97316', '#64748b', '#8b5cf6', '#ec4899'];
 
 export const OutboundStatusChart: React.FC<{ data: any[] }> = ({ data }) => {
   const storeMap = new Map();
@@ -39,7 +39,7 @@ export const OutboundStatusChart: React.FC<{ data: any[] }> = ({ data }) => {
             <Bar dataKey="Dispatched" stackId="a" fill="#3b82f6" />
             <Bar dataKey="Processing" stackId="a" fill="#f59e0b" />
             <Bar dataKey="Cancelled" stackId="a" fill="#ef4444" />
-            <Bar dataKey="Returned" stackId="a" fill="#f97316" />
+            <Bar dataKey="Returned" stackId="a" fill="#8b5cf6" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -48,30 +48,41 @@ export const OutboundStatusChart: React.FC<{ data: any[] }> = ({ data }) => {
 };
 
 export const OutboundVolumeChart: React.FC<{ data: any[] }> = ({ data }) => {
-  const dateMap = new Map();
+  const hourlyMap = new Map();
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  // Initialize all 24 hours
+  for (let i = 0; i < 24; i++) {
+    const hour = new Date(twentyFourHoursAgo.getTime() + i * 60 * 60 * 1000);
+    const hourKey = hour.getHours() + ':00';
+    hourlyMap.set(hourKey, { hour: hourKey, count: 0 });
+  }
   
   data.forEach(d => {
     if (!d.createDate) return;
-    const date = d.createDate.split('T')[0];
-    if (!dateMap.has(date)) {
-      dateMap.set(date, { date, count: 0 });
+    const createDate = new Date(d.createDate);
+    if (createDate >= twentyFourHoursAgo && createDate <= now) {
+      const hourKey = createDate.getHours() + ':00';
+      if (hourlyMap.has(hourKey)) {
+        hourlyMap.get(hourKey).count++;
+      }
     }
-    dateMap.get(date).count++;
   });
 
-  const chartData = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const chartData = Array.from(hourlyMap.values());
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80 flex flex-col">
-      <h3 className="text-sm font-semibold text-slate-700 mb-4">Daily Shipment Volume</h3>
+      <h3 className="text-sm font-semibold text-slate-700 mb-4">Shipment Volume (Last 24h)</h3>
       <div className="flex-1 w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%" debounce={50}>
           <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="date" tick={{fontSize: 12}} />
+            <XAxis dataKey="hour" tick={{fontSize: 12}} />
             <YAxis tick={{fontSize: 12}} />
             <Tooltip wrapperStyle={{ fontSize: '12px' }} />
-            <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+            <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 8, strokeWidth: 2 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>

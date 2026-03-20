@@ -99,7 +99,7 @@ export const ConnectionValidator: React.FC<ConnectionValidatorProps> = ({ isOpen
 
             // ReturnGo
             try {
-                const rgResults = await testReturnGo();
+                const rgResults = await testReturnGo(appContext);
                 const storeResults = Object.entries(rgResults);
                 const failed = storeResults.filter(([_, r]) => !r.success);
                 

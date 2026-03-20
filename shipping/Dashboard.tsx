@@ -86,10 +86,10 @@ export const ShippingDashboard: React.FC<{ appContext: 'levis' | 'bounty' | 'adm
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex justify-between items-center bg-gradient-to-r from-slate-900 via-ecomplete-primary to-slate-900 p-6 rounded-2xl border border-white/10 shadow-2xl mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Shipping Intelligence</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Shipping Intelligence</h2>
+          <p className="text-[10px] font-black text-ecomplete-accent uppercase tracking-[0.3em] mt-1 opacity-80">
             {appContext === 'admin' ? 'All Hubs' : appContext === 'levis' ? "Levi's Hub" : 'Bounty Brands Hub'}
           </p>
         </div>
@@ -97,41 +97,41 @@ export const ShippingDashboard: React.FC<{ appContext: 'levis' | 'bounty' | 'adm
           <select 
             value={selectedStore} 
             onChange={e => setSelectedStore(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-xs font-bold text-white uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-ecomplete-accent appearance-none cursor-pointer hover:bg-white/20 transition-colors"
           >
-            <option value="All Stores">All Stores</option>
+            <option value="All Stores" className="text-slate-900">All Stores</option>
             {availableStores.map(store => (
-              <option key={store} value={store}>{store}</option>
+              <option key={store} value={store} className="text-slate-900">{store}</option>
             ))}
           </select>
           <select 
             value={days} 
             onChange={e => setDays(Number(e.target.value))}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-xs font-bold text-white uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-ecomplete-accent appearance-none cursor-pointer hover:bg-white/20 transition-colors"
           >
-            <option value={0}>Today (GMT+2)</option>
-            <option value={7}>Last 7 Days</option>
-            <option value={14}>Last 14 Days</option>
-            <option value={30}>Last 30 Days</option>
-            <option value={90}>Last 90 Days</option>
+            <option value={0} className="text-slate-900">Today (GMT+2)</option>
+            <option value={7} className="text-slate-900">Last 7 Days</option>
+            <option value={14} className="text-slate-900">Last 14 Days</option>
+            <option value={30} className="text-slate-900">Last 30 Days</option>
+            <option value={90} className="text-slate-900">Last 90 Days</option>
           </select>
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+          <div className="flex items-center gap-2 bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
             <input 
               type="checkbox" 
               id="pending-only" 
               checked={showOnlyPending} 
               onChange={e => setShowOnlyPending(e.target.checked)}
-              className="rounded text-blue-500 focus:ring-blue-500"
+              className="rounded bg-white/20 border-white/30 text-ecomplete-accent focus:ring-ecomplete-accent focus:ring-offset-slate-900"
             />
-            <label htmlFor="pending-only" className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer">
+            <label htmlFor="pending-only" className="text-xs font-bold text-white uppercase tracking-wider cursor-pointer">
               Pending Only
             </label>
           </div>
           <button 
             onClick={handleRefresh}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-3 bg-ecomplete-accent text-slate-900 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-yellow-400 transition-all shadow-lg shadow-ecomplete-accent/20"
           >
-            <RefreshCw size={16} /> Refresh
+            <RefreshCw size={16} /> Sync Data
           </button>
         </div>
       </div>

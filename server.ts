@@ -56,7 +56,7 @@ async function callFreshdeskApi(path: string, apiKey: string, connectionMode: st
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || '3000', 10);
 
   app.use(cors());
   app.use(helmet({
@@ -82,7 +82,7 @@ async function startServer() {
         connectSrc: ["'self'", "*.googleapis.com", "*.gstatic.com", "*.google.com", "*.google-analytics.com", "*.googletagmanager.com", "api.freshdesk.com", "api.returngo.ai"],
         fontSrc: ["'self'", "data:", "*.gstatic.com", "*.googleapis.com"],
         objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
+        mediaSrc: ["'self'", "data:", "blob:"],
         frameSrc: ["'self'", "https://aistudio.google.com", "https://*.run.app"],
         frameAncestors: ["'self'", "https://aistudio.google.com", "https://*.run.app"],
       },
@@ -342,11 +342,14 @@ async function startServer() {
   });
 
   app.get('/api/returngo/test-rmas', async (req, res) => {
+    const appContext = (req.query.appContext as string || "levis");
     const results: Record<string, any> = {};
     
     try {
-      // Test all bounty stores
-      for (const store of BOUNTY_STORES_CONFIG) {
+      const storesToTest = appContext === 'bounty' ? BOUNTY_STORES_CONFIG : [{ name: 'LevisOnline', apiKey: RETURNGO_LEVIS_API_KEY, url: 'levis-sa.myshopify.com' }];
+
+      // Test stores
+      for (const store of storesToTest) {
         try {
           console.log(`[ReturnGo Test] Fetching last RMA for ${store.name} (${store.url})...`);
           const data = await callReturnGoApi('/rmas?pagesize=1&sort_by=-rma_created_at', store.apiKey, store.url);
@@ -354,7 +357,7 @@ async function startServer() {
           
           if (lastRma) {
             const updatedAt = new Date(lastRma.rma_updated_at);
-            const daysSinceUpdate = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+            const daysSinceUpdate = !isNaN(updatedAt.getTime()) ? Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24)) : -1;
             
             results[store.name] = {
               success: true,
@@ -704,7 +707,7 @@ async function startServer() {
     // In production, serve static files from the 'dist/client' directory
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     app.use(express.static(path.resolve(__dirname, 'client')));
-    app.get('*', (req, res) => {
+    app.use((req, res) => {
       res.sendFile(path.resolve(__dirname, 'client', 'index.html'));
     });
   }
