@@ -10,7 +10,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
       </div>
       <h3 className="text-lg font-semibold text-red-800 mb-2">Something went wrong</h3>
       <p className="text-sm text-red-600 mb-4 max-w-md">
-        {error.message || "An unexpected error occurred while loading this component."}
+        {(error as Error).message || "An unexpected error occurred while loading this component."}
       </p>
       <button
         onClick={resetErrorBoundary}

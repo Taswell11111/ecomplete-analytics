@@ -185,23 +185,13 @@ const App: React.FC = () => {
               // Send access log asynchronously
               (async () => {
                   try {
-                      const ipResponse = await fetch('https://api.ipify.org?format=json');
-                      const ipData = await ipResponse.json();
-                      const clientIp = ipData.ip;
-                      
                       await fetch('/api/email/send-access-log', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ user, clientIp })
-                      });
-                  } catch (ipErr) {
-                      console.error('Failed to fetch IP:', ipErr);
-                      // Fallback without client IP
-                      fetch('/api/email/send-access-log', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ user })
-                      }).catch(err => console.error('Failed to send access log:', err));
+                      });
+                  } catch (err) {
+                      console.error('Failed to send access log:', err);
                   }
               })();
           } else { 

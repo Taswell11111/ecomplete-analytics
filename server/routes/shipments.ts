@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getShipments, testParcelninjaConnection } from '../parcelninja';
+import { getShipments, testParcelninjaConnection } from '../parcelninja.js';
 
 const router = Router();
 

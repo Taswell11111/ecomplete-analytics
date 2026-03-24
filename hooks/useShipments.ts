@@ -5,9 +5,10 @@ export const useShipments = (days: number = 30, appContext: 'levis' | 'bounty' |
   return useQuery({
     queryKey: ['shipments', 'outbound', days, appContext],
     queryFn: async () => {
-      return apiClient.get('/shipments', {
+      const response = await apiClient.get('/shipments', {
         params: { type: 'outbound', days, appContext }
       });
+      return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

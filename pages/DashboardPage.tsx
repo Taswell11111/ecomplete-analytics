@@ -1490,7 +1490,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="max-w-[1600px] mx-auto w-full px-8">
                       {/* Primary Hero: Executive Intelligence Insight */}
                       <div className="bg-gradient-to-br from-slate-900 via-ecomplete-primary to-slate-900 text-white rounded-[2.5rem] p-12 mb-8 shadow-2xl relative overflow-hidden border border-white/10">
-                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px] opacity-20"></div>
                           <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
                           
                           <div className="relative z-10">
