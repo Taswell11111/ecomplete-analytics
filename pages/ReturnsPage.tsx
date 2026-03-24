@@ -18,6 +18,7 @@ import { MetricDetailModal } from '../components/MetricDetailModal'; // Keep thi
 import { RmaDetailModal } from '../components/RmaDetailModal'; // New RMA detail modal
 import { RmaFullDetailModal } from '../components/RmaFullDetailModal'; // New RMA full detail modal
 import { ConsolidatedView, Rma } from '../components/ConsolidatedView';
+import { ReturnsKpiCard } from '../components/ReturnsKpiCard';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -191,13 +192,8 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
     }, [targetConfig]);
 
     // Current metrics being displayed (either aggregated or filtered bounty store)
-    const displayMetrics = useMemo(() => {
-        return fullDashboardData?.metrics;
-    }, [fullDashboardData]);
-
-    const displayRmaLists = useMemo(() => {
-        return fullDashboardData?.rmaLists;
-    }, [fullDashboardData]);
+    const displayMetrics = fullDashboardData?.metrics;
+    const displayRmaLists = fullDashboardData?.rmaLists;
 
     const consolidatedRmas = useMemo(() => {
         if (!bountyData || !bountyData.byStore) return [];
@@ -205,8 +201,11 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
         const allRmas: Rma[] = [];
         BOUNTY_STORES.forEach(store => {
             const storeData = bountyData.byStore[store];
-            if (storeData && storeData.allActiveRmas) {
-                storeData.allActiveRmas.forEach((rma: ReturnGoRMA) => {
+            if (!storeData) return;
+
+            const addRmas = (rmas: ReturnGoRMA[]) => {
+                if (!rmas) return;
+                rmas.forEach((rma: ReturnGoRMA) => {
                     allRmas.push({
                         id: rma.rmaId,
                         store: store,
@@ -219,22 +218,10 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
                         lastUpdated: rma.lastUpdated
                     });
                 });
-            }
-            if (storeData && storeData.allCompletedRmas) {
-                storeData.allCompletedRmas.forEach((rma: ReturnGoRMA) => {
-                    allRmas.push({
-                        id: rma.rmaId,
-                        store: store,
-                        status: rma.status,
-                        order: rma.orderName || 'Unknown',
-                        customerName: rma.customerName || 'Unknown',
-                        trackingNumber: rma.trackingNumber || '',
-                        requestedDate: rma.createdAt || 'Unknown',
-                        updatedAt: rma.updatedAt || rma.rma_updated_at || rma.lastUpdated,
-                        lastUpdated: rma.lastUpdated
-                    });
-                });
-            }
+            };
+
+            addRmas(storeData.allActiveRmas);
+            addRmas(storeData.allCompletedRmas);
         });
         return allRmas;
     }, [bountyData]);
@@ -612,158 +599,6 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
         return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 }).format(val);
     };
 
-    const render_kpi_card = (
-        label: string,
-        value: string | number,
-        help_text: string = "",
-        trend: number | null = null,
-        card_accent: string = "#3a8dff",
-        value_color: string = "#7bd6ff",
-        rmaCount?: number,
-        rmaListKey?: keyof FullReturnGoDashboardData['rmaLists']
-    ) => {
-        return (
-            <div 
-                className={`bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between h-[160px] w-full mb-6 relative overflow-hidden group ${rmaListKey ? 'cursor-pointer' : ''}`} 
-                title={help_text}
-                onClick={() => rmaListKey && handleMetricClick(label, rmaListKey)}
-            >
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-500" style={{ backgroundColor: card_accent }}></div>
-                
-                <div className="flex justify-between items-start relative z-10">
-                    <div>
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{label}</div>
-                        <div className="text-4xl font-black tracking-tighter" style={{ color: value_color }}>{value}</div>
-                        {rmaCount !== undefined && (
-                            <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">
-                                {rmaCount} RMAs
-                            </div>
-                        )}
-                    </div>
-                    
-                    {trend !== null && (
-                        <div className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full ${trend > 0 ? 'bg-emerald-50 text-emerald-600' : trend < 0 ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-500'}`}>
-                            {trend > 0 ? <TrendingUp size={14} /> : trend < 0 ? <TrendingDown size={14} /> : <Minus size={14} />}
-                            {Math.abs(trend).toFixed(1)}%
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    const render_metric_card = (
-        column: any,
-        label: string,
-        count_key: string,
-        filter_name: string,
-        counts: Record<string, number>,
-        help_text: string = "",
-        card_accent: string = "#3a8dff",
-        count_color: string = "#7bd6ff",
-        rmaListKey?: keyof FullReturnGoDashboardData['rmaLists']
-    ) => {
-        const count = counts[count_key] || 0;
-        
-        let sparklineContent = null;
-        
-        if (rmaListKey && displayRmaLists && displayRmaLists[rmaListKey]) {
-            const rmas = displayRmaLists[rmaListKey] || [];
-            if (rmas.length > 0) {
-                const ageGroups: Record<number, ReturnGoRMA[]> = {};
-                let maxAge = 0;
-                
-                rmas.forEach(rma => {
-                    const dateStr = rma.lastUpdated || rma.updatedAt || rma.rma_updated_at || rma.createdAt || rma.rma_created_at;
-                    let age = 0;
-                    if (dateStr) {
-                        const parsed = parseISO(dateStr);
-                        if (isValid(parsed)) {
-                            age = Math.max(0, Math.floor((new Date().getTime() - parsed.getTime()) / (1000 * 60 * 60 * 24)));
-                        }
-                    }
-                    if (age > 30) age = 30; // Cap at 30 days for visualization
-                    if (age > maxAge) maxAge = age;
-                    if (!ageGroups[age]) ageGroups[age] = [];
-                    ageGroups[age].push(rma);
-                });
-                
-                // Ensure at least 7 days are shown for visual balance
-                const displayDays = Math.max(7, maxAge + 1);
-                const histogramData = Array.from({ length: displayDays }, (_, i) => ({
-                    day: i,
-                    rmas: ageGroups[i] || []
-                }));
-                
-                const maxCount = Math.max(...histogramData.map(d => d.rmas.length), 1);
-                
-                sparklineContent = (
-                    <div className="flex flex-col items-end h-full justify-end w-1/2">
-                        <div className="flex items-end h-16 gap-1 w-full justify-end">
-                            {histogramData.map((data, i) => (
-                                <div 
-                                    key={i} 
-                                    className="w-3 rounded-t-sm relative group/bar cursor-pointer transition-all hover:opacity-100" 
-                                    style={{ 
-                                        height: `${Math.max((data.rmas.length / maxCount) * 100, 5)}%`, 
-                                        backgroundColor: data.rmas.length > 0 ? card_accent : '#f1f5f9',
-                                        opacity: data.rmas.length > 0 ? 0.6 : 1
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (data.rmas.length > 0) {
-                                            setRmaModalTitle(`${label} - ${data.day}${data.day === 30 ? '+' : ''} Days Old`);
-                                            setRmaModalRmas(data.rmas);
-                                            setRmaDetailModalOpen(true);
-                                        }
-                                    }}
-                                >
-                                    {data.rmas.length > 0 && (
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover/bar:opacity-100 pointer-events-none whitespace-nowrap z-20">
-                                            {data.rmas.length} RMAs<br/>{data.day}{data.day === 30 ? '+' : ''} days
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex justify-between w-full text-[9px] text-slate-400 font-bold mt-1 px-1">
-                            <span>0d</span>
-                            <span>{displayDays - 1}{displayDays - 1 === 30 ? '+' : ''}d</span>
-                        </div>
-                        <div className="text-[8px] text-slate-400 uppercase tracking-widest text-right w-full mt-0.5">Days since update</div>
-                    </div>
-                );
-            }
-        }
-        
-        return (
-            <div 
-                className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between h-[180px] w-full mb-6 relative overflow-hidden group" 
-                title={help_text}
-                onClick={() => rmaListKey && handleMetricClick(label, rmaListKey)}
-            >
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-500" style={{ backgroundColor: card_accent }}></div>
-                
-                <div className="flex justify-between items-start relative z-10 h-full">
-                    <div className="flex flex-col justify-between h-full">
-                        <div>
-                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{label}</div>
-                            <div className="text-5xl font-black tracking-tighter" style={{ color: count_color }}>{count}</div>
-                        </div>
-                    </div>
-                    
-                    {sparklineContent}
-                </div>
-                
-                {rmaListKey && (
-                    <div className="absolute bottom-4 right-6 text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        View All <ChevronRight size={12} />
-                    </div>
-                )}
-            </div>
-        );
-    };
-
     const counts = useMemo(() => {
         if (!displayMetrics) return {};
         return {
@@ -1117,10 +952,47 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ selectedGroup, appCont
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    {render_kpi_card("Revenue Retained", formatCurrency((displayMetrics as any).metrics?.revenueRetained || 0), "Value of exchanges and store credit", (displayMetrics as any).metrics?.popRevenueRetained, "#10b981", "#34d399", displayRmaLists?.Retained?.length || 0, "Retained")}
-                                    {render_kpi_card("Revenue Lost", formatCurrency((displayMetrics as any).metrics?.revenueLost || 0), "Value of refunds", null, "#ef4444", "#f87171", displayRmaLists?.Lost?.length || 0, "Lost")}
-                                    {render_kpi_card("Avg Time to Resolution", `${((displayMetrics as any).metrics?.averageTTR || 0).toFixed(1)} Days`, "Average days to complete an RMA", null, "#8b5cf6", "#a78bfa")}
-                                    {render_kpi_card("Aging Returns", (displayMetrics as any).metrics?.agingReturnsCount || 0, "Pending RMAs older than 14 days", null, "#f59e0b", "#fbbf24", displayRmaLists?.Aging?.length || 0, "Aging")}
+                                    <ReturnsKpiCard 
+                                        label="Revenue Retained" 
+                                        value={formatCurrency((displayMetrics as any).metrics?.revenueRetained || 0)} 
+                                        help_text="Value of exchanges and store credit"
+                                        trend={(displayMetrics as any).metrics?.popRevenueRetained}
+                                        card_accent="#10b981"
+                                        value_color="#34d399"
+                                        rmaCount={displayRmaLists?.Retained?.length || 0}
+                                        rmaListKey="Retained"
+                                        onClick={handleMetricClick}
+                                    />
+                                    <ReturnsKpiCard 
+                                        label="Revenue Lost" 
+                                        value={formatCurrency((displayMetrics as any).metrics?.revenueLost || 0)} 
+                                        help_text="Value of refunds"
+                                        trend={null}
+                                        card_accent="#ef4444"
+                                        value_color="#f87171"
+                                        rmaCount={displayRmaLists?.Lost?.length || 0}
+                                        rmaListKey="Lost"
+                                        onClick={handleMetricClick}
+                                    />
+                                    <ReturnsKpiCard 
+                                        label="Avg Time to Resolution" 
+                                        value={`${((displayMetrics as any).metrics?.averageTTR || 0).toFixed(1)} Days`} 
+                                        help_text="Average days to complete an RMA"
+                                        trend={null}
+                                        card_accent="#8b5cf6"
+                                        value_color="#a78bfa"
+                                    />
+                                    <ReturnsKpiCard 
+                                        label="Aging Returns" 
+                                        value={(displayMetrics as any).metrics?.agingReturnsCount || 0} 
+                                        help_text="Pending RMAs older than 14 days"
+                                        trend={null}
+                                        card_accent="#f59e0b"
+                                        value_color="#fbbf24"
+                                        rmaCount={displayRmaLists?.Aging?.length || 0}
+                                        rmaListKey="Aging"
+                                        onClick={handleMetricClick}
+                                    />
                                 </div>
 
                                 {/* Store RMA Data Table */}

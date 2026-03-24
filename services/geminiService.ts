@@ -175,43 +175,29 @@ export const generateExecutiveSummary = async (tickets: TicketActivity[], metric
     
     TICKET DATA: ${JSON.stringify(dataSummary)}
 
-    Generate a concise, data-driven executive synopsis and audio briefing script. 
+    Generate a concise, data-driven executive synopsis that serves as both the dashboard text and the audio briefing script. 
     The script must be professional, authoritative, and focus on data analytics: ticket volume, frequency, types, and key points of attention.
-    Avoid duplicate or redundant topics. Keep the content concise to reduce the briefing length by 20%.
+    DO NOT duplicate information across sections. Keep the content concise and flowing naturally.
     Specifically, analyze the Aging & Response metrics. If the unresponded count is high or the average age is high, highlight this as a critical operational risk.
 
-    The audio briefing script MUST reflect on:
-    1. Total Active Ticket Queue and the breakdown per group.
-    2. Historical Backlog Matrix.
-    3. Brand Health Risk Threshold & Customer Emotional Sentiment.
-    4. Metric blocks for Created Today, Closed Today, Today's activity.
-    5. Urgency profile and Category Matrix analysis.
-    6. In-depth Support Ecosystem Pulse Check.
-
-    The script should follow this flow:
-    1. Greeting and Introduction (MUST start exactly with: "Good day valued client. Welcome to your eComplete Intellgence and Analytics Centre - a central hub providing you with interconnected and cross-dimensial insight into your operational and business health factors. We'll begin with the Total Active Ticket Queue....").
-    2. Total Active Queue Breakdown.
-    3. Historical Backlog Analysis.
-    4. Aging & Response Analysis.
-    5. Brand Health Risk and Customer Sentiment assessment.
-    6. Metric Highlights.
-    7. Urgency profile and Category Matrix analysis.
-    8. Support Ecosystem Pulse Check.
-    9. Strategic Action Roadmap.
-
-    Output strictly using these headers and rules:
+    The narrative MUST follow this exact flow and use these exact headers:
 
     **Executive Overview**: 
-    1. Write 2-3 concise paragraphs in British English.
-    2. LEAN HEAVILY ON DATA ANALYTICS regarding the SPECIFIC REASONS customers are submitting service requests.
-    3. EXPLICITLY NOTE COMMON THEMES AND TRENDS being reported by customers across the brands.
-    4. START THE VOLUME SYNTHESIS PARAGRAPH EXACTLY WITH: "With a reference to the ticket volume comparison..." and analyse if the volume is up or down compared to last week and what that implies.
-    5. End the Executive Overview with a distinct, final paragraph summarising the overall operational condition and leading into the Pulse Check.
+    1. MUST start exactly with: "Good day valued client. Welcome to your eComplete Intelligence and Analytics Centre - a central hub providing you with interconnected and cross-dimensional insight into your operational and business health factors. We'll begin with the Total Active Ticket Queue."
+    2. Immediately follow with the Total Active Queue Breakdown.
+    3. Transition into the Historical Backlog Analysis.
+    4. Analyze the Aging & Response metrics.
+    5. Assess the Brand Health Risk Threshold & Customer Emotional Sentiment.
+    6. Provide Metric blocks for Created Today, Closed Today, Today's activity.
+    7. Provide an Urgency profile and Category Matrix analysis.
+    8. Provide an In-depth Support Ecosystem Pulse Check.
+    9. Ensure this entire section flows naturally as a single speech without bullet points.
 
     **Notable Points**:
     Provide exactly 3 high-level strategic insight sentences based on volume and frequency data. Format as a bulleted list.
 
-    **Critical Risk Alert**: List specific high-risk tickets (Format: Customer - #ID: Description of risk). Bulleted list.
+    **Critical Risk Alert**: 
+    List specific high-risk tickets (Format: Customer - #ID: Description of risk). Bulleted list.
 
     **Immediate/Next Steps**:
     List 3 distinct, urgent actions. BE SPECIFIC.
@@ -248,6 +234,11 @@ export const generateSpeech = async (text: string): Promise<string | null> => {
     // Clean the text for better TTS (remove markdown headers, emojis, special chars)
     // Only keep alphanumeric characters, basic punctuation, and whitespace
     const cleanText = speechText
+        .replace(/\*\*Executive Overview\*\*/gi, '')
+        .replace(/\*\*Notable Points\*\*/gi, 'Moving on to Notable Points.')
+        .replace(/\*\*Critical Risk Alert\*\*/gi, 'Here are the Critical Risk Alerts.')
+        .replace(/\*\*Immediate\/Next Steps\*\*/gi, 'Immediate Next Steps.')
+        .replace(/\*\*Strategic Action Roadmap\*\*/gi, 'Finally, the Strategic Action Roadmap.')
         .replace(/[*#]/g, '')
         .replace(/[^\w\s.,!?'"-]/g, ' ')
         .replace(/\s+/g, ' ')

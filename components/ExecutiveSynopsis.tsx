@@ -195,7 +195,7 @@ export const ExecutiveSynopsis: React.FC<ExecutiveSynopsisProps> = ({ executiveS
               </div>
 
               {/* Strategic Action Roadmap */}
-              <div className="space-y-12">
+              <div id="section-roadmap" className="space-y-12">
                   <div className="flex items-center gap-6 border-b-4 border-ecomplete-accent/30 pb-6">
                       <div className="w-16 h-16 bg-ecomplete-accent rounded-[1.5rem] flex items-center justify-center shadow-xl shadow-ecomplete-accent/20 rotate-3">
                         <CheckCircle className="text-ecomplete-primary" size={32} />

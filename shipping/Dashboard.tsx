@@ -13,45 +13,38 @@ export const ShippingDashboard: React.FC<{ appContext: 'levis' | 'bounty' | 'adm
   const [days, setDays] = useState(7); // Default to Last 7 Days (7)
   const [showOnlyPending, setShowOnlyPending] = useState(true);
   const [selectedStore, setSelectedStore] = useState<string>('All Stores');
-  const { data: outboundsData, isLoading: outLoading, error: outError, refetch: refetchOut } = useShipments(days);
-  const { data: inboundsData, isLoading: inLoading, error: inError, refetch: refetchIn } = useInbounds(days);
+  const { data: outboundsData, isLoading: outLoading, error: outError, refetch: refetchOut } = useShipments(days, appContext);
+  const { data: inboundsData, isLoading: inLoading, error: inError, refetch: refetchIn } = useInbounds(days, appContext);
 
   const handleRefresh = () => {
     refetchOut();
     refetchIn();
   };
 
-  const filterByContext = (data: any[]) => {
-    if (!data) return [];
-    if (appContext === 'levis') return data.filter(d => d._store === "Levi's");
-    if (appContext === 'bounty') return data.filter(d => d._store !== "Levi's");
-    return data;
-  };
-
   const outboundsRaw = useMemo(() => {
-    let data = filterByContext(outboundsData?.data || []);
+    let data = outboundsData?.data || [];
     if (selectedStore !== 'All Stores') {
-      data = data.filter(d => d._store === selectedStore);
+      data = data.filter((d: any) => d._store === selectedStore);
     }
     return data;
-  }, [outboundsData, appContext, selectedStore]);
+  }, [outboundsData, selectedStore]);
 
   const inbounds = useMemo(() => {
-    let data = filterByContext(inboundsData?.data || []);
+    let data = inboundsData?.data || [];
     if (selectedStore !== 'All Stores') {
-      data = data.filter(d => d._store === selectedStore);
+      data = data.filter((d: any) => d._store === selectedStore);
     }
     return data;
-  }, [inboundsData, appContext, selectedStore]);
+  }, [inboundsData, selectedStore]);
 
   const availableStores = useMemo(() => {
     const stores = new Set<string>();
     const allData = [...(outboundsData?.data || []), ...(inboundsData?.data || [])];
-    filterByContext(allData).forEach(d => {
+    allData.forEach((d: any) => {
       if (d._store) stores.add(d._store);
     });
     return Array.from(stores).sort();
-  }, [outboundsData, inboundsData, appContext]);
+  }, [outboundsData, inboundsData]);
 
   const outbounds = useMemo(() => {
     if (!showOnlyPending) return outboundsRaw;

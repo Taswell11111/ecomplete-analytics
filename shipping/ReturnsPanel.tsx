@@ -6,18 +6,11 @@ import { formatDateZA } from '../utils/dateUtils';
 import { differenceInDays, parseISO } from 'date-fns';
 
 export const ReturnsPanel: React.FC<{ appContext: 'levis' | 'bounty' | 'admin' }> = ({ appContext }) => {
-  const { data: outboundsData } = useShipments(90); // Fetch longer period for matching
-  const { data: inboundsData } = useInbounds(30);
+  const { data: outboundsData } = useShipments(90, appContext); // Fetch longer period for matching
+  const { data: inboundsData } = useInbounds(30, appContext);
 
-  const filterByContext = (data: any[]) => {
-    if (!data) return [];
-    if (appContext === 'levis') return data.filter(d => d._store === "Levi's");
-    if (appContext === 'bounty') return data.filter(d => d._store !== "bounty");
-    return data;
-  };
-
-  const outbounds = filterByContext(outboundsData?.data || []);
-  const inbounds = filterByContext(inboundsData?.data || []);
+  const outbounds = outboundsData?.data || [];
+  const inbounds = inboundsData?.data || [];
 
   const { linkedPairs, unlinkedCount } = useMemo(() => {
     const returns = inbounds.filter(i => i.type?.description?.toLowerCase().includes('return'));

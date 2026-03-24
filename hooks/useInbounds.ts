@@ -1,16 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../utils/apiClient';
 
-export const useInbounds = (days: number = 30) => {
+export const useInbounds = (days: number = 30, appContext: 'levis' | 'bounty' | 'admin' = 'admin') => {
   return useQuery({
-    queryKey: ['shipments', 'inbound', days],
+    queryKey: ['shipments', 'inbound', days, appContext],
     queryFn: async () => {
-      const res = await fetch(`/api/shipments?type=inbound&days=${days}`);
-      if (!res.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return res.json();
+      return apiClient.get('/shipments', {
+        params: { type: 'inbound', days, appContext }
+      });
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 5 * 60 * 1000,
   });
 };

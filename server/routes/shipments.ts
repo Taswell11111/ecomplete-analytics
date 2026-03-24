@@ -22,7 +22,7 @@ router.get('/shipments', async (req, res) => {
       return res.status(400).json({ error: 'Invalid type parameter. Must be outbound or inbound.' });
     }
 
-    const data = await getShipments(type, days, req.query.storeName as string);
+    const data = await getShipments(type, days, req.query.storeName as string, req.query.appContext as 'levis' | 'bounty' | 'admin');
     res.json(data);
   } catch (error: any) {
     console.error('Error in /api/shipments:', error);

@@ -113,38 +113,43 @@ const getInventoryName = async (client: any, sku: string): Promise<string> => {
   return sku;
 };
 
-export const fetchOutbounds = async (store: any, startDate: string, endDate: string) => {
+const fetchShipmentsByType = async (type: 'outbound' | 'inbound', store: any, startDate: string, endDate: string) => {
   const client = createClient(store);
   let allRecords: any[] = [];
   let page = 1;
   let hasMore = true;
+  const endpoint = type === 'outbound' ? '/outbounds' : '/inbounds';
+  const dataKey = type === 'outbound' ? 'outbounds' : 'inbounds';
+
+  const baseParams = {
+    pageSize: 50,
+    page,
+    startDate,
+    endDate,
+  };
+
+  const sortParams = type === 'outbound' 
+    ? { orderBy: 'createDate', orderDirection: 'desc' }
+    : { col: 4, colOrder: 'desc' };
 
   try {
     while (hasMore && page <= 40) {
-      const res = await client.get('/outbounds', {
-        params: {
-          pageSize: 50,
-          page,
-          startDate,
-          endDate,
-          orderBy: 'createDate',
-          orderDirection: 'desc'
-        }
+      const res = await client.get(endpoint, {
+        params: { ...baseParams, ...sortParams, page }
       });
 
-      const outbounds = res.data?.outbounds || [];
-      if (outbounds.length === 0) break;
+      const records = res.data?.[dataKey] || [];
+      if (records.length === 0) break;
 
-      for (const summary of outbounds) {
-        // Use summary directly to avoid rate limits
+      for (const summary of records) {
         allRecords.push({
           ...summary,
           _store: store.name,
-          _type: 'outbound'
+          _type: type
         });
       }
 
-      if (outbounds.length < 50) {
+      if (records.length < 50) {
         hasMore = false;
       } else {
         page++;
@@ -157,64 +162,24 @@ export const fetchOutbounds = async (store: any, startDate: string, endDate: str
     if (e.response?.status === 401) {
       console.warn(`Authentication failed for store ${store.name} (ParcelNinja 401). Please check credentials.`);
     } else {
-      console.error(`Failed to fetch outbounds for store ${store.name}:`, e.message);
+      console.error(`Failed to fetch ${dataKey} for store ${store.name}:`, e.message);
     }
     return { data: [], error: e.message || 'Unknown error' };
   }
 };
 
-export const fetchInbounds = async (store: any, startDate: string, endDate: string) => {
-  const client = createClient(store);
-  let allRecords: any[] = [];
-  let page = 1;
-  let hasMore = true;
+export const fetchOutbounds = (store: any, startDate: string, endDate: string) => fetchShipmentsByType('outbound', store, startDate, endDate);
+export const fetchInbounds = (store: any, startDate: string, endDate: string) => fetchShipmentsByType('inbound', store, startDate, endDate);
 
-  try {
-    while (hasMore && page <= 40) {
-      const res = await client.get('/inbounds', {
-        params: {
-          pageSize: 50,
-          page,
-          startDate,
-          endDate,
-          col: 4,
-          colOrder: 'desc'
-        }
-      });
-
-      const inbounds = res.data?.inbounds || [];
-      if (inbounds.length === 0) break;
-
-      for (const summary of inbounds) {
-        // Use summary directly to avoid rate limits
-        allRecords.push({
-          ...summary,
-          _store: store.name,
-          _type: 'inbound'
-        });
-      }
-
-      if (inbounds.length < 50) {
-        hasMore = false;
-      } else {
-        page++;
-        // Delay between pages to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-    }
-    return { data: allRecords, error: null };
-  } catch (e: any) {
-    if (e.response?.status === 401) {
-      console.warn(`Authentication failed for store ${store.name} (ParcelNinja 401). Please check credentials.`);
-    } else {
-      console.error(`Failed to fetch inbounds for store ${store.name}:`, e.message);
-    }
-    return { data: [], error: e.message || 'Unknown error' };
-  }
+const formatDate = (date: Date) => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`;
 };
 
-export const getShipments = async (type: 'outbound' | 'inbound', days: number, storeName?: string) => {
-  const cacheKey = `${type}_${days}_${storeName || 'all'}`;
+export const getShipments = async (type: 'outbound' | 'inbound', days: number, storeName?: string, appContext: 'levis' | 'bounty' | 'admin' = 'admin') => {
+  const cacheKey = `${type}_${days}_${storeName || 'all'}_${appContext}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
@@ -232,13 +197,6 @@ export const getShipments = async (type: 'outbound' | 'inbound', days: number, s
     startDateObj.setDate(startDateObj.getDate() - days);
   }
 
-  const formatDate = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}${m}${day}`;
-  };
-
   const startDate = formatDate(startDateObj);
   const endDate = formatDate(endDateObj);
 
@@ -247,7 +205,14 @@ export const getShipments = async (type: 'outbound' | 'inbound', days: number, s
   const mergedData: any[] = [];
   const errors: Record<string, string | null> = {};
 
-  const storesToFetch = storeName ? STORES.filter(s => s.name === storeName) : STORES;
+  let baseStores = STORES;
+  if (appContext === 'levis') {
+    baseStores = LEVIS;
+  } else if (appContext === 'bounty') {
+    baseStores = BOUNTY_BRANDS;
+  }
+
+  const storesToFetch = storeName ? baseStores.filter(s => s.name === storeName) : baseStores;
 
   // Parallelise with staggering to avoid blocking the event loop and prevent rate limiting
   const results = await Promise.allSettled(
@@ -307,10 +272,16 @@ export const testParcelninjaConnection = async (appContext: 'levis' | 'bounty' |
         
         // Fetch the most recent outbound to verify connection and see real data
         console.log(`[Parcelninja Test] Fetching last outbound for ${store.name}...`);
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+        
         const res = await client.get('/outbounds', { 
           params: { 
             pageSize: 1, 
             page: 1,
+            startDate: formatDate(startDate),
+            endDate: formatDate(endDate),
             orderBy: 'createDate',
             orderDirection: 'desc'
           } 

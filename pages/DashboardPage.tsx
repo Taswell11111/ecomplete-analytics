@@ -13,7 +13,7 @@ import { getCategoryColor, getUrgencyColor } from '../utils/styles';
 import { 
   Loader2, Download, RefreshCw, Link as LinkIcon, Terminal, XCircle, MousePointerClick,
   Activity, BarChart3, Layers, Zap, Share2, ChevronDown, Check, Users, Repeat, Search, ChevronUp, Mic, Volume2, MicOff, PlayCircle, PauseCircle,
-  AlertCircle, X, Menu, Settings
+  AlertCircle, X, Menu, Settings, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { format, formatDistanceToNow, isSameDay, eachDayOfInterval, isBefore, differenceInDays, eachHourOfInterval, isSameHour } from 'date-fns';
 import { StatBox } from '../components/StatBox';
@@ -174,6 +174,46 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [hiddenDatasets, setHiddenDatasets] = useState<number[]>([]);
 
   // Audio Highlighting Logic
+  const [scrollDirection, setScrollDirection] = useState<'up' | 'down' | null>(null);
+
+  // Effect to determine if we need to scroll to see the highlighted section
+  useEffect(() => {
+      if (!isPlayingAudio || !highlightedSection) {
+          setScrollDirection(null);
+          return;
+      }
+
+      const checkScroll = () => {
+          const element = document.getElementById(`section-${highlightedSection}`);
+          if (!element) return;
+
+          const rect = element.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+
+          // If element is above viewport
+          if (rect.bottom < 100) {
+              setScrollDirection('up');
+          } 
+          // If element is below viewport
+          else if (rect.top > viewportHeight - 100) {
+              setScrollDirection('down');
+          } 
+          // Element is visible
+          else {
+              setScrollDirection(null);
+          }
+      };
+
+      checkScroll();
+      window.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+      
+      return () => {
+          window.removeEventListener('scroll', checkScroll);
+          window.removeEventListener('resize', checkScroll);
+      };
+  }, [highlightedSection, isPlayingAudio]);
+
   useEffect(() => {
     if (!isPlayingAudio || !audioRef.current) {
         setHighlightedSection(null);
@@ -191,11 +231,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         const progress = time / duration;
         
         if (progress < 0.1) setHighlightedSection('greeting');
-        else if (progress < 0.25) setHighlightedSection('queue');
-        else if (progress < 0.4) setHighlightedSection('backlog');
-        else if (progress < 0.55) setHighlightedSection('risk');
-        else if (progress < 0.7) setHighlightedSection('metrics');
-        else if (progress < 0.85) setHighlightedSection('pulse');
+        else if (progress < 0.2) setHighlightedSection('queue');
+        else if (progress < 0.35) setHighlightedSection('backlog');
+        else if (progress < 0.5) setHighlightedSection('risk');
+        else if (progress < 0.65) setHighlightedSection('metrics');
+        else if (progress < 0.8) setHighlightedSection('pulse');
         else setHighlightedSection('roadmap');
     };
 
@@ -1587,7 +1627,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <h2 className="text-sm lg:text-xl font-black text-slate-400 uppercase tracking-[0.4em] mt-8 mb-16 text-center group-hover:text-ecomplete-primary transition-colors w-full">Total Active Ticket Queue</h2>
                           <div className="flex flex-col lg:flex-row items-center justify-center w-full gap-16 lg:gap-24">
                               <div className="flex flex-col items-center text-center">
-                                  <div className={`text-7xl md:text-8xl lg:text-9xl leading-none font-black text-[#FFEB00] tracking-tighter group-hover:scale-105 transition-transform duration-700 drop-shadow-[0_0_15px_rgba(255,235,0,0.3)] ${highlightedSection === 'queue' ? 'ring-8 ring-ecomplete-accent ring-offset-8 rounded-3xl animate-pulse' : ''}`} style={{ WebkitTextStroke: '1px black', textShadow: '2px 2px 0px rgba(0,0,0,0.1)' }}>{displayMetrics.activeTickets}</div>
+                                  <div id="section-queue" className={`text-7xl md:text-8xl lg:text-9xl leading-none font-black text-[#FFEB00] tracking-tighter group-hover:scale-105 transition-transform duration-700 drop-shadow-[0_0_15px_rgba(255,235,0,0.3)] ${highlightedSection === 'queue' ? 'ring-8 ring-ecomplete-accent ring-offset-8 rounded-3xl animate-pulse' : ''}`} style={{ WebkitTextStroke: '1px black', textShadow: '2px 2px 0px rgba(0,0,0,0.1)' }}>{displayMetrics.activeTickets}</div>
                                   <div className="text-slate-400 font-black uppercase tracking-[0.2em] mt-6 lg:mt-8 flex flex-col gap-2 items-center justify-center"> 
                                       <span className="text-2xl lg:text-4xl text-slate-900 tracking-tight">{selectedGroup.name}</span> 
                                       <span className="text-xs lg:text-sm text-slate-500 font-black">{format(new Date(), "EEEE dd MMM")}</span> 
@@ -1624,7 +1664,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               )}
                           </div>
 
-                          <div className={`mt-12 pt-8 border-t border-slate-100 max-w-5xl mx-auto text-center transition-all duration-500 ${highlightedSection === 'backlog' ? 'bg-ecomplete-accent/10 rounded-[2rem] p-8 -mx-8 ring-2 ring-ecomplete-accent' : ''}`}>
+                          <div id="section-backlog" className={`mt-12 pt-8 border-t border-slate-100 max-w-5xl mx-auto text-center transition-all duration-500 ${highlightedSection === 'backlog' ? 'bg-ecomplete-accent/10 rounded-[2rem] p-8 -mx-8 ring-2 ring-ecomplete-accent' : ''}`}>
                               <h3 className="text-xs font-black text-slate-800 uppercase tracking-[0.3em] mb-8 flex items-center gap-2 justify-center">Active Queue Volume over time {isFetchingBacklog && <Loader2 size={14} className="animate-spin text-ecomplete-primary" />}</h3>
                               <div className="h-[250px] w-full relative"><canvas ref={agingChartRef}></canvas></div>
                               <p className="text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold h-6">{backlogChartSubtitle}</p>
@@ -1714,7 +1754,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       {/* Operational Insight Report removed from main dashboard as requested */}
                       
                       {/* KPI Dashboard Strip */}
-                      <div className={`bg-slate-50/50 border border-slate-100 rounded-[2.5rem] grid grid-cols-1 md:grid-cols-2 p-12 gap-12 mb-12 transition-all duration-500 ${highlightedSection === 'risk' ? 'ring-4 ring-ecomplete-accent bg-ecomplete-accent/5' : ''}`}>
+                      <div id="section-risk" className={`bg-slate-50/50 border border-slate-100 rounded-[2.5rem] grid grid-cols-1 md:grid-cols-2 p-12 gap-12 mb-12 transition-all duration-500 ${highlightedSection === 'risk' ? 'ring-4 ring-ecomplete-accent bg-ecomplete-accent/5' : ''}`}>
                           <div className="flex flex-col gap-6 group">
                               <div className="flex justify-between items-end">
                                   <div>
@@ -1772,7 +1812,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </div>
                       </div>
 
-                      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-all duration-500 ${highlightedSection === 'metrics' ? 'ring-4 ring-ecomplete-accent rounded-[3rem] p-4 -m-4 bg-ecomplete-accent/5' : ''}`}>
+                      <div id="section-metrics" className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-all duration-500 ${highlightedSection === 'metrics' ? 'ring-4 ring-ecomplete-accent rounded-[3rem] p-4 -m-4 bg-ecomplete-accent/5' : ''}`}>
                           <StatBox label="Created Today" value={displayMetrics.createdToday} trend24h={displayMetrics.createdTrend24h} trend7d={displayMetrics.createdTrend7d} onClick={() => handleMetricClick('Created')} chartData={displayMetrics.ticketsByHour} />
                           <StatBox label="Closed Today" value={displayMetrics.closedToday} trend24h={displayMetrics.closedTrend24h} trend7d={displayMetrics.closedTrend7d} onClick={() => handleMetricClick('Closed')} chartData={displayMetrics.closedTicketsByHour} />
                           <StatBox label="Today's activity" value={displayMetrics.workedToday} trend24h={displayMetrics.workedTrend24h} trend7d={displayMetrics.workedTrend7d} onClick={() => handleMetricClick('Worked')} chartData={displayMetrics.workedTicketsByHour} />
@@ -1799,7 +1839,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </div>
                       
                       <div className="space-y-8">
-                          <div className="w-full mt-12 mb-12 animate-in fade-in">
+                          <div id="section-pulse" className={`w-full mt-12 mb-12 animate-in fade-in transition-all duration-500 ${highlightedSection === 'pulse' ? 'ring-4 ring-ecomplete-accent rounded-[3rem] p-4 -m-4 bg-ecomplete-accent/5' : ''}`}>
                               <FreshdeskPulse 
                                   activities={pulseActivities} 
                                   onMetricClick={(title, filterFn) => {
@@ -1976,6 +2016,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           />
           <LinkResultModal isOpen={linkModalOpen} onClose={() => setLinkModalOpen(false)} url={generatedLink} />
           {isLiveConsoleOpen && <LiveVoiceConsole isOpen={isLiveConsoleOpen} onClose={() => setIsLiveConsoleOpen(false)} summary={executiveSummary} metrics={displayMetrics} activities={activities} />}
+          
+          {/* Floating Scroll Indicator */}
+          {scrollDirection && (
+              <div className="fixed bottom-10 right-10 z-50 animate-bounce">
+                  <div className="bg-ecomplete-accent text-slate-900 p-4 rounded-full shadow-2xl flex items-center justify-center border-4 border-white">
+                      {scrollDirection === 'up' ? <ArrowUp size={32} /> : <ArrowDown size={32} />}
+                  </div>
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full whitespace-nowrap">
+                      Scroll to view
+                  </div>
+              </div>
+          )}
       </main>
 
       {/* Mobile Menu Drawer */}

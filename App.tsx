@@ -13,6 +13,8 @@ import { ShippingDashboard } from './shipping/Dashboard';
 import { ReturnsPage } from './pages/ReturnsPage';
 import { ConnectionValidator } from './components/ConnectionValidator';
 
+import { ErrorBoundary } from './components/ErrorBoundary';
+
 type Page = 'dashboard' | 'shipping' | 'returns' | 'insight' | 'inventory';
 
 const App: React.FC = () => {
@@ -30,6 +32,11 @@ const App: React.FC = () => {
   const [ticketScope, setTicketScope] = useState<TicketScope>('25');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [visitedPages, setVisitedPages] = useState<Set<string>>(new Set(['dashboard']));
+
+  useEffect(() => {
+    setVisitedPages(prev => new Set(prev).add(activePage));
+  }, [activePage]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -129,20 +136,9 @@ const App: React.FC = () => {
     audio.onplay = () => setIsPlayingAudio(true);
     audioRef.current = audio;
     
-    // Fade-in effect
-    audio.volume = 0;
-    audio.play().then(() => {
-        let vol = 0;
-        const fadeInterval = setInterval(() => {
-            vol += 0.05;
-            if (vol >= 1) {
-                audio.volume = 1;
-                clearInterval(fadeInterval);
-            } else {
-                audio.volume = vol;
-            }
-        }, 50); // 50ms * 20 steps = 1000ms fade-in
-    }).catch(e => console.error("Audio play blocked", e));
+    // Fade-in effect removed to fix slow start
+    audio.volume = 1;
+    audio.play().catch(e => console.error("Audio play blocked", e));
     
     setIsPlayingAudio(true);
   };
@@ -185,6 +181,29 @@ const App: React.FC = () => {
               }
               
               setShowValidator(true);
+
+              // Send access log asynchronously
+              (async () => {
+                  try {
+                      const ipResponse = await fetch('https://api.ipify.org?format=json');
+                      const ipData = await ipResponse.json();
+                      const clientIp = ipData.ip;
+                      
+                      await fetch('/api/email/send-access-log', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ user, clientIp })
+                      });
+                  } catch (ipErr) {
+                      console.error('Failed to fetch IP:', ipErr);
+                      // Fallback without client IP
+                      fetch('/api/email/send-access-log', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ user })
+                      }).catch(err => console.error('Failed to send access log:', err));
+                  }
+              })();
           } else { 
               setError("Connection Failed."); 
           } 
@@ -386,24 +405,42 @@ const App: React.FC = () => {
             
             {/* Pages kept in DOM to maintain state/async operations when switching tabs */}
             
-            <div className={activePage === 'shipping' ? 'block' : 'hidden'}>
-                <ShippingDashboard appContext={appContext} />
-            </div>
+            {visitedPages.has('shipping') && (
+                <div className={activePage === 'shipping' ? 'block' : 'hidden'}>
+                    <ErrorBoundary>
+                        <ShippingDashboard appContext={appContext} />
+                    </ErrorBoundary>
+                </div>
+            )}
 
-            <div className={activePage === 'returns' ? 'block' : 'hidden'}>
-                <ReturnsPage selectedGroup={selectedGroup} appContext={appContext} />
-            </div>
+            {visitedPages.has('returns') && (
+                <div className={activePage === 'returns' ? 'block' : 'hidden'}>
+                    <ErrorBoundary>
+                        <ReturnsPage selectedGroup={selectedGroup} appContext={appContext} />
+                    </ErrorBoundary>
+                </div>
+            )}
 
-            <div className={activePage === 'inventory' ? 'block' : 'hidden'}>
-                <div className="flex items-center justify-center h-screen text-slate-500 font-black uppercase tracking-widest">Planned for production</div>
-            </div>
+            {visitedPages.has('inventory') && (
+                <div className={activePage === 'inventory' ? 'block' : 'hidden'}>
+                    <ErrorBoundary>
+                        <div className="flex items-center justify-center h-screen text-slate-500 font-black uppercase tracking-widest">Planned for production</div>
+                    </ErrorBoundary>
+                </div>
+            )}
 
-            <div className={activePage === 'insight' ? 'block' : 'hidden'}>
-                {InsightReport}
-            </div>
+            {visitedPages.has('insight') && (
+                <div className={activePage === 'insight' ? 'block' : 'hidden'}>
+                    <ErrorBoundary>
+                        {InsightReport}
+                    </ErrorBoundary>
+                </div>
+            )}
             
             <div className={activePage === 'dashboard' ? 'block' : 'hidden'}>
-                {MainDashboard}
+                <ErrorBoundary>
+                    {MainDashboard}
+                </ErrorBoundary>
             </div>
 
             <ConnectionValidator 

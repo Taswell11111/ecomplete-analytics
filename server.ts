@@ -315,6 +315,39 @@ async function startServer() {
         res.status(500).json({ success: false, message: error.message });
     }
   });
+
+  app.post('/api/email/send-access-log', async (req, res) => {
+    const { user, clientIp: bodyIp } = req.body || {};
+    const clientIp = bodyIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown IP';
+    
+    const SENDER_PASS = process.env.EMAIL_PASS || "evpd vqfd vwku krkn";
+    const RECIPIENT = "taswell@ecomplete.co.za";
+    const SENDER_EMAIL = "taswell@ecomplete.co.za";
+
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: SENDER_EMAIL,
+            pass: SENDER_PASS
+        }
+    });
+
+    const mailOptions = {
+        from: SENDER_EMAIL,
+        to: RECIPIENT,
+        subject: `Analytics Centre Accessed`,
+        text: `The Analytics Centre was accessed.\n\nUser: ${user || 'Unknown'}\nIP Address: ${clientIp}\nTime: ${new Date().toISOString()}`
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ SUCCESS: Access log email sent for IP ${clientIp}.`);
+        res.json({ success: true, message: "Access log email sent successfully." });
+    } catch (error: any) {
+        console.error(`SMTP Error (Access Log): ${error}`);
+        res.status(500).json({ success: false, message: error.message });
+    }
+  });
   // ReturnGo API Proxy Routes
   app.post('/api/returngo/test-connection', async (req, res) => {
     const shopName = (req.body.shopName as string || "").trim();

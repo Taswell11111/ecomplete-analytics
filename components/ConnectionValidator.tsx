@@ -70,19 +70,16 @@ export const ConnectionValidator: React.FC<ConnectionValidatorProps> = ({ isOpen
                         <div className="mt-4 space-y-2">
                             <div className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">
                                 <Package size={10} />
-                                Recent Outbounds
+                                Store Connections
                             </div>
                             <div className="grid grid-cols-1 gap-1.5">
                                 {storeResults.map(([store, res]) => (
                                     <div key={store} className="flex items-center justify-between p-2 bg-slate-950/50 rounded-lg border border-slate-800/50">
                                         <span className="text-[9px] font-bold text-slate-400">{store}</span>
-                                        {res.lastOutbound ? (
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[9px] font-mono text-emerald-400">{res.lastOutbound.outboundNo}</span>
-                                                <span className="text-[8px] text-slate-600">{new Date(res.lastOutbound.createDate).toLocaleDateString()}</span>
-                                            </div>
+                                        {res.success ? (
+                                            <CheckCircle2 size={14} className="text-emerald-400" />
                                         ) : (
-                                            <span className="text-[8px] text-slate-600 italic">No data</span>
+                                            <span className="text-[8px] text-red-400 italic">{res.message || 'Error'}</span>
                                         )}
                                     </div>
                                 ))}
@@ -109,19 +106,16 @@ export const ConnectionValidator: React.FC<ConnectionValidatorProps> = ({ isOpen
                     <div className="mt-4 space-y-2">
                         <div className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">
                             <RefreshCw size={10} />
-                            Recent RMAs
+                            Store Connections
                         </div>
                         <div className="grid grid-cols-1 gap-1.5">
                             {storeResults.map(([name, r]) => (
                                 <div key={name} className="flex items-center justify-between p-2 bg-slate-950/50 rounded-lg border border-slate-800/50">
                                     <span className="text-[9px] font-bold text-slate-400">{name}</span>
-                                    {r.success && r.rmaId ? (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[9px] font-mono text-blue-400">{r.rmaId}</span>
-                                            <span className="text-[8px] text-slate-600">{r.daysSinceUpdate}d ago</span>
-                                        </div>
+                                    {r.success ? (
+                                        <CheckCircle2 size={14} className="text-emerald-400" />
                                     ) : (
-                                        <span className="text-[8px] text-slate-600 italic">{r.success ? 'No RMAs' : 'Error'}</span>
+                                        <span className="text-[8px] text-red-400 italic">{r.error || 'Error'}</span>
                                     )}
                                 </div>
                             ))}
